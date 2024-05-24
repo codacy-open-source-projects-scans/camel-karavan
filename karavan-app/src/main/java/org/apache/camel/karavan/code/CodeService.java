@@ -18,19 +18,11 @@ package org.apache.camel.karavan.code;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.apicurio.datamodels.Library;
-import io.apicurio.datamodels.models.openapi.OpenApiDocument;
-import io.quarkus.qute.Engine;
-import io.quarkus.qute.Template;
-import io.quarkus.qute.TemplateInstance;
 import io.smallrye.mutiny.tuples.Tuple3;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.CamelContext;
-import org.apache.camel.generator.openapi.RestDslGenerator;
-import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.karavan.api.KameletResources;
 import org.apache.camel.karavan.model.DockerComposeService;
 import org.apache.camel.karavan.docker.DockerService;
@@ -71,7 +63,7 @@ public class CodeService {
     public static final String MARKDOWN_EXTENSION = ".md";
     public static final String PROJECT_JKUBE_EXTENSION = ".jkube.yaml";
     public static final String PROJECT_DEPLOYMENT_JKUBE_FILENAME = "deployment" + PROJECT_JKUBE_EXTENSION;
-    private static final String SNIPPETS_PATH = "/snippets/";
+    private static final String TEMPLATES_PATH = "/templates/";
     private static final String DATA_FOLDER = System.getProperty("user.dir") + File.separator + "data";
     public static final String BUILDER_ENV_MAPPING_FILENAME = "builder-env.properties";
     private static final int INTERNAL_PORT = 8080;
@@ -87,9 +79,6 @@ public class CodeService {
 
     @Inject
     KaravanCacheService karavanCacheService;
-
-    @Inject
-    Engine engine;
 
     @Inject
     Vertx vertx;
@@ -140,16 +129,15 @@ public class CodeService {
     }
 
     public ProjectFile getApplicationProperties(Project project) {
-        String templateText = getTemplateText(APPLICATION_PROPERTIES_FILENAME);
-        Template result = engine.parse(templateText);
-        TemplateInstance instance = result
-                .data("projectId", project.getProjectId())
-                .data("projectName", project.getName())
-                .data("projectDescription", project.getDescription());
-        if (ConfigService.inKubernetes()) {
-            instance.data("namespace", kubernetesService.getNamespace());
+        String code = getTemplateText(APPLICATION_PROPERTIES_FILENAME);
+        if (code != null) {
+            code = code.replace("{projectId}", project.getProjectId());
+            code = code.replace("{projectName}", project.getName());
+            code = code.replace("{projectDescription}", project.getDescription());
+            if (ConfigService.inKubernetes()) {
+                code = code.replace("{namespace}", kubernetesService.getNamespace());
+            }
         }
-        String code =  instance.render();
         return new ProjectFile(APPLICATION_PROPERTIES_FILENAME, code, project.getProjectId(), Instant.now().toEpochMilli());
     }
 
@@ -194,16 +182,16 @@ public class CodeService {
 
         if (ConfigService.inKubernetes()) {
             if (kubernetesService.isOpenshift()) {
-                result.put(APPLICATION_PROPERTIES_FILENAME, getResourceFile(SNIPPETS_PATH + "openshift-" + APPLICATION_PROPERTIES_FILENAME));
-                result.put(BUILD_SCRIPT_FILENAME, getResourceFile(SNIPPETS_PATH + "openshift-" + BUILD_SCRIPT_FILENAME));
+                result.put(APPLICATION_PROPERTIES_FILENAME, getResourceFile(TEMPLATES_PATH + "openshift-" + APPLICATION_PROPERTIES_FILENAME));
+                result.put(BUILD_SCRIPT_FILENAME, getResourceFile(TEMPLATES_PATH + "openshift-" + BUILD_SCRIPT_FILENAME));
             } else {
-                result.put(APPLICATION_PROPERTIES_FILENAME, getResourceFile(SNIPPETS_PATH + "kubernetes-" + APPLICATION_PROPERTIES_FILENAME));
-                result.put(BUILD_SCRIPT_FILENAME, getResourceFile(SNIPPETS_PATH + "kubernetes-" + BUILD_SCRIPT_FILENAME));
+                result.put(APPLICATION_PROPERTIES_FILENAME, getResourceFile(TEMPLATES_PATH + "kubernetes-" + APPLICATION_PROPERTIES_FILENAME));
+                result.put(BUILD_SCRIPT_FILENAME, getResourceFile(TEMPLATES_PATH + "kubernetes-" + BUILD_SCRIPT_FILENAME));
             }
-            result.put(BUILDER_ENV_MAPPING_FILENAME, getResourceFile(SNIPPETS_PATH + BUILDER_ENV_MAPPING_FILENAME));
+            result.put(BUILDER_ENV_MAPPING_FILENAME, getResourceFile(TEMPLATES_PATH + BUILDER_ENV_MAPPING_FILENAME));
         } else {
-            result.put(APPLICATION_PROPERTIES_FILENAME, getResourceFile(SNIPPETS_PATH + "docker-" + APPLICATION_PROPERTIES_FILENAME));
-            result.put(BUILD_SCRIPT_FILENAME, getResourceFile(SNIPPETS_PATH + "docker-" + BUILD_SCRIPT_FILENAME));
+            result.put(APPLICATION_PROPERTIES_FILENAME, getResourceFile(TEMPLATES_PATH + "docker-" + APPLICATION_PROPERTIES_FILENAME));
+            result.put(BUILD_SCRIPT_FILENAME, getResourceFile(TEMPLATES_PATH + "docker-" + BUILD_SCRIPT_FILENAME));
         }
 
         List<String> files = new ArrayList<>(interfaces);
@@ -211,14 +199,14 @@ public class CodeService {
         files.addAll(getBeanTemplateNames());
 
         files.forEach(file -> {
-            String templatePath = SNIPPETS_PATH + file;
+            String templatePath = TEMPLATES_PATH + file;
             String templateText = getResourceFile(templatePath);
             if (templateText != null) {
                 result.put(file, templateText);
             }
         });
 
-        result.put(PROJECT_COMPOSE_FILENAME, getResourceFile(SNIPPETS_PATH + PROJECT_COMPOSE_FILENAME));
+        result.put(PROJECT_COMPOSE_FILENAME, getResourceFile(TEMPLATES_PATH + PROJECT_COMPOSE_FILENAME));
         return result;
     }
 
@@ -242,14 +230,6 @@ public class CodeService {
     public String getPropertyValue(String propFileText, String key) {
         Optional<String> data = propFileText.lines().filter(p -> p.startsWith(key)).findFirst();
         return data.map(s -> s.split("=")[1]).orElse(null);
-    }
-
-    public String generate(String fileName, String openApi, boolean generateRoutes) throws Exception {
-        final ObjectNode node = fileName.endsWith("json") ? readNodeFromJson(openApi) : readNodeFromYaml(openApi);
-        OpenApiDocument document = (OpenApiDocument) Library.readDocument(node);
-        try (CamelContext context = new DefaultCamelContext()) {
-            return RestDslGenerator.toYaml(document).generate(context, generateRoutes);
-        }
     }
 
     private ObjectNode readNodeFromJson(String openApi) throws Exception {
@@ -301,13 +281,12 @@ public class CodeService {
 
     public ProjectFile createInitialProjectCompose(Project project) {
         int port = getNextAvailablePort();
-        String templateText = getTemplateText(PROJECT_COMPOSE_FILENAME);
-        Template result = engine.parse(templateText);
-        TemplateInstance instance = result
-                .data("projectId", project.getProjectId())
-                .data("projectPort", port)
-                .data("projectImage", project.getProjectId());
-        String code = instance.render();
+        String code = getTemplateText(PROJECT_COMPOSE_FILENAME);
+        if (code != null) {
+            code = code.replace("{projectId}", project.getProjectId());
+            code = code.replace("{projectPort}", String.valueOf(port));
+            code = code.replace("{projectImage}", project.getProjectId());
+        }
         return new ProjectFile(PROJECT_COMPOSE_FILENAME, code, project.getProjectId(), Instant.now().toEpochMilli());
     }
 
