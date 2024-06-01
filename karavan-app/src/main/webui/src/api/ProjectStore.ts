@@ -41,6 +41,8 @@ interface AppConfigState {
     selectedEnv: string[];
     setSelectedEnv: (selectedEnv: string[]) => void;
     selectEnvironment: (name: string, selected: boolean) => void;
+    notificationFetcherId?: string;
+    resetNotificationFetcher: () => void
 }
 
 export const useAppConfigStore = createWithEqualityFn<AppConfigState>((set) => ({
@@ -85,7 +87,10 @@ export const useAppConfigStore = createWithEqualityFn<AppConfigState>((set) => (
             }
             return {selectedEnv: state.selectedEnv};
         });
-    }
+    },
+    resetNotificationFetcher: ()  => {
+        set({notificationFetcherId: Math.random().toString()})
+    },
 }), shallow)
 
 
@@ -171,17 +176,13 @@ export const useProjectStore = createWithEqualityFn<ProjectState>((set) => ({
     camelStatuses: [],
     setCamelStatuses: (camelStatuses: CamelStatus[])  => {
         set((state: ProjectState) => {
-            state.camelStatuses.length = 0;
-            state.camelStatuses.push(...camelStatuses);
-            return {camelStatuses: state.camelStatuses};
+            return {camelStatuses: camelStatuses};
         });
     },
     camelTraces: [],
     setCamelTraces: (camelTraces: CamelStatus[])  => {
         set((state: ProjectState) => {
-            state.camelTraces.length = 0;
-            state.camelTraces.push(...camelTraces);
-            return {camelTraces: state.camelTraces};
+            return {camelTraces: camelTraces};
         });
     },
     refreshTrace: false,

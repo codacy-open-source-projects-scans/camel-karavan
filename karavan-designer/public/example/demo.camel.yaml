@@ -1,1 +1,9 @@
-[]
+- route:
+    id: route-d1dc
+    nodePrefixId: route-0f1
+    from:
+      id: from-852d
+      uri: direct
+      steps:
+        - loadBalance:
+            id: loadBalance-d8f0

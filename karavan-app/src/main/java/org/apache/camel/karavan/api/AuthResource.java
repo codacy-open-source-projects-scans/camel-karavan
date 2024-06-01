@@ -20,9 +20,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.kubernetes.KubernetesService;
-import org.apache.camel.karavan.service.AuthService;
-import org.apache.camel.karavan.service.ProjectService;
+import org.apache.camel.karavan.project.ProjectStarter;
+import org.apache.camel.karavan.status.kubernetes.KubernetesStatusService;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 
@@ -34,13 +34,10 @@ import java.util.*;
 public class AuthResource {
 
     @Inject
-    AuthService authService;
+    ProjectStarter projectStarter;
 
     @Inject
-    ProjectService projectService;
-
-    @Inject
-    KubernetesService kubernetesService;
+    KubernetesStatusService kubernetesStatusService;
 
     @ConfigProperty(name = "quarkus.security.users.embedded.realm-name", defaultValue = "")
     Optional<String> realm;
@@ -83,14 +80,20 @@ public class AuthResource {
     @Path("/auth")
     @Produces(MediaType.TEXT_PLAIN)
     public Response authType() throws Exception {
-        return Response.ok(authService.authType()).build();
+        String authType = ConfigProvider.getConfig().getValue("karavan.auth", String.class);
+        return Response.ok(authType).build();
     }
 
     @GET
     @Path("/sso-config")
     @Produces(MediaType.APPLICATION_JSON)
     public Response ssoConfig() throws Exception {
-        return Response.ok(authService.getSsoConfig()).build();
+        Map<String, String> getSsoConfig = Map.of(
+                "url", ConfigProvider.getConfig().getValue("karavan.keycloak.url", String.class),
+                "realm", ConfigProvider.getConfig().getValue("karavan.keycloak.realm", String.class),
+                "clientId", ConfigProvider.getConfig().getValue("karavan.keycloak.frontend.clientId", String.class)
+        );
+        return Response.ok(getSsoConfig).build();
     }
 
     @GET
@@ -98,8 +101,8 @@ public class AuthResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getConfiguration() throws Exception {
         List<HealthCheckResponse> list = List.of(
-                kubernetesService.call(),
-                projectService.call()
+                kubernetesStatusService.call(),
+                projectStarter.call()
         );
         return Response.ok(Map.of(
                 "status", list.stream().allMatch(h -> Objects.equals(h.getStatus(), HealthCheckResponse.Status.UP)),
