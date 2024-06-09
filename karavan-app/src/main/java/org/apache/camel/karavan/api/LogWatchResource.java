@@ -31,11 +31,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
-import org.apache.camel.karavan.manager.docker.DockerManager;
-import org.apache.camel.karavan.manager.docker.DockerLogCallback;
-import org.apache.camel.karavan.manager.kubernetes.KubernetesManager;
-
-import org.apache.camel.karavan.config.ConfigService;
+import org.apache.camel.karavan.docker.DockerLogCallback;
+import org.apache.camel.karavan.docker.DockerService;
+import org.apache.camel.karavan.kubernetes.KubernetesService;
+import org.apache.camel.karavan.service.ConfigService;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
@@ -51,10 +50,10 @@ public class LogWatchResource {
     private static final ConcurrentHashMap<String, LogWatch> logWatches = new ConcurrentHashMap<>();
 
     @Inject
-    KubernetesManager kubernetesManager;
+    KubernetesService kubernetesService;
 
     @Inject
-    DockerManager dockerManager;
+    DockerService dockerService;
 
     @Inject
     @ManagedExecutorConfig()
@@ -88,7 +87,7 @@ public class LogWatchResource {
                     sink.send(sse.newEvent(line));
                 }
             });
-            dockerManager.logContainer(name, dockerLogCallback);
+            dockerService.logContainer(name, dockerLogCallback);
             dockerLogCallback.close();
             sink.close();
             LOGGER.info("LogCallback for " + name + " closed");
@@ -99,7 +98,7 @@ public class LogWatchResource {
 
     private void getKubernetesLogs(String name, SseEventSink eventSink, Sse sse) {
         try (SseEventSink sink = eventSink) {
-            Tuple2<LogWatch, KubernetesClient> request = kubernetesManager.getContainerLogWatch(name);
+            Tuple2<LogWatch, KubernetesClient> request = kubernetesService.getContainerLogWatch(name);
             LogWatch logWatch = request.getItem1();
             BufferedReader reader = new BufferedReader(new InputStreamReader(logWatch.getOutput()));
             try {

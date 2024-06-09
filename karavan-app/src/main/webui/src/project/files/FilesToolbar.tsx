@@ -44,11 +44,9 @@ export function FileToolbar () {
     const [commitMessageIsOpen, setCommitMessageIsOpen] = useState(false);
     const [pullIsOpen, setPullIsOpen] = useState(false);
     const [commitMessage, setCommitMessage] = useState('');
-    const [project, isPushing, isPulling] =
-        useProjectStore((s) => [s.project, s.isPushing, s.isPulling], shallow )
-    const {files} = useFilesStore();
-    const [file, setFile] = useFileStore((s) =>
-        [s.file, s.setFile], shallow )
+    const [project, isPushing, isPulling] = useProjectStore((s) => [s.project, s.isPushing, s.isPulling], shallow )
+    const [diff] = useFilesStore((s) => [s.diff], shallow);
+    const [file, setFile] = useFileStore((s) => [s.file, s.setFile], shallow )
 
     useEffect(() => {
     }, [project, file]);
@@ -126,7 +124,7 @@ export function FileToolbar () {
     }
 
     function needCommit(): boolean {
-        return project ? files.filter(f => f.lastUpdate > project.lastCommitTimestamp).length > 0 : false;
+        return diff && Object.keys(diff).length > 0;
     }
 
     function isKameletsProject(): boolean {

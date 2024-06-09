@@ -20,8 +20,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.project.ProjectStarter;
-import org.apache.camel.karavan.status.kubernetes.KubernetesStatusService;
+import org.apache.camel.karavan.KaravanStartupLoader;
+import org.apache.camel.karavan.kubernetes.KubernetesStatusService;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.HealthCheckResponse;
@@ -34,7 +34,7 @@ import java.util.*;
 public class AuthResource {
 
     @Inject
-    ProjectStarter projectStarter;
+    KaravanStartupLoader karavanStartupLoader;
 
     @Inject
     KubernetesStatusService kubernetesStatusService;
@@ -102,7 +102,7 @@ public class AuthResource {
     public Response getConfiguration() throws Exception {
         List<HealthCheckResponse> list = List.of(
                 kubernetesStatusService.call(),
-                projectStarter.call()
+                karavanStartupLoader.call()
         );
         return Response.ok(Map.of(
                 "status", list.stream().allMatch(h -> Objects.equals(h.getStatus(), HealthCheckResponse.Status.UP)),

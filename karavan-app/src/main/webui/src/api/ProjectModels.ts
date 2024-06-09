@@ -35,12 +35,11 @@ export enum ProjectType {
 export class Project {
     projectId: string = '';
     name: string = '';
-    description: string = '';
     lastCommit: string = '';
     lastCommitTimestamp: number = 0;
     type: string = ProjectType.normal;
 
-    public constructor(projectId: string, name: string, description: string, lastCommit: string, type: string);
+    public constructor(projectId: string, name: string, lastCommit: string, type: string);
     public constructor(init?: Partial<Project>);
     public constructor(...args: any[]) {
         if (args.length === 1) {
@@ -49,10 +48,9 @@ export class Project {
         } else {
             this.projectId = args[0];
             this.name = args[1];
-            this.description = args[2];
-            this.lastCommit = args[3];
-            this.lastCommitTimestamp = args[4];
-            this.type = args[5];
+            this.lastCommit = args[2];
+            this.lastCommitTimestamp = args[3];
+            this.type = args[4];
             return;
         }
     }
@@ -162,11 +160,15 @@ export const ProjectFileTypes: ProjectFileType[] = [
 ];
 
 function getProjectFileType (file: ProjectFile) {
-    if (file.name.endsWith(".camel.yaml")) return ProjectFileTypes.filter(p => p.name === "INTEGRATION")
-    if (file.name.endsWith(".kamelet.yaml")) return ProjectFileTypes.filter(p => p.name === "KAMELET")
-    if (file.name.endsWith(".json")) return ProjectFileTypes.filter(p => p.name === "JSON")
-    if (file.name.endsWith(".yaml")) return ProjectFileTypes.filter(p => p.name === "YAML")
-    const extension = file.name.substring(file.name.lastIndexOf('.') + 1);
+    return getProjectFileTypeByName(file.name);
+}
+
+function getProjectFileTypeByName (fileName: string) {
+    if (fileName.endsWith(".camel.yaml")) return ProjectFileTypes.filter(p => p.name === "INTEGRATION")
+    if (fileName.endsWith(".kamelet.yaml")) return ProjectFileTypes.filter(p => p.name === "KAMELET")
+    if (fileName.endsWith(".json")) return ProjectFileTypes.filter(p => p.name === "JSON")
+    if (fileName.endsWith(".yaml")) return ProjectFileTypes.filter(p => p.name === "YAML")
+    const extension = fileName.substring(fileName.lastIndexOf('.') + 1);
     return ProjectFileTypes.filter(p => p.extension === extension);
 }
 
@@ -177,6 +179,11 @@ export function getProjectFileTypeName (file: ProjectFile) {
 
 export function getProjectFileTypeTitle (file: ProjectFile) {
     const types = getProjectFileType(file);
+    return types.length >0 ? types.map(p => p.title)[0] : "Other";
+}
+
+export function getProjectFileTypeByNameTitle (fileName: string) {
+    const types = getProjectFileTypeByName(fileName);
     return types.length >0 ? types.map(p => p.title)[0] : "Other";
 }
 

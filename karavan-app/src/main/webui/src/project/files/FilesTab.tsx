@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React from 'react';
+import React, {useState} from 'react';
 import {
     Badge,
     Bullseye,
@@ -34,38 +34,35 @@ import '../../designer/karavan.css';
 import {Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {Table} from '@patternfly/react-table/deprecated';
 import DeleteIcon from "@patternfly/react-icons/dist/js/icons/times-icon";
+import CheckIcon from "@patternfly/react-icons/dist/js/icons/check-icon";
 import SearchIcon from '@patternfly/react-icons/dist/esm/icons/search-icon';
 import {useFilesStore, useFileStore, useProjectStore} from "../../api/ProjectStore";
 import {
     getProjectFileTypeTitle,
-    ProjectFile,
+    getProjectFileTypeByNameTitle,
+    ProjectFile
 } from "../../api/ProjectModels";
 import {FileToolbar} from "./FilesToolbar";
 import DownloadIcon from "@patternfly/react-icons/dist/esm/icons/download-icon";
+import DiffIcon from "@patternfly/react-icons/dist/esm/icons/outlined-copy-icon";
 import FileSaver from "file-saver";
 import {CreateFileModal} from "./CreateFileModal";
 import {DeleteFileModal} from "./DeleteFileModal";
 import {UploadFileModal} from "./UploadFileModal";
 import {shallow} from "zustand/shallow";
 import {CreateIntegrationModal} from "./CreateIntegrationModal";
+import {DiffFileModal} from "./DiffFileModal";
 
 export function FilesTab () {
 
-    const [files] = useFilesStore((s) => [s.files], shallow);
+    const [files, diff] = useFilesStore((s) => [s.files, s.diff], shallow);
     const [project] = useProjectStore((s) => [s.project], shallow);
     const [setFile] = useFileStore((s) => [s.setFile], shallow);
+    const [id, setId] = useState<string>('');
 
-    function getDate(lastUpdate: number): string {
-        if (lastUpdate) {
-            const date = new Date(lastUpdate);
-            return date.toISOString().slice(0, 19).replace('T',' ');
-        } else {
-            return "N/A"
-        }
-    }
 
-    function needCommit(lastUpdate: number): boolean {
-        return lastUpdate > project.lastCommitTimestamp;
+    function needCommit(filename: string): boolean {
+        return diff && diff[filename] !== undefined;
     }
 
     function download (file: ProjectFile) {
@@ -91,19 +88,21 @@ export function FilesTab () {
                     <FileToolbar/>
                 </PanelHeader>
             </Panel>
+            <DiffFileModal id={id}/>
             <div style={{height:"100%", overflow:"auto"}}>
                 <Table aria-label="Files" variant={"compact"} className={"table"}>
                     <Thead>
                         <Tr>
                             <Th key='type' width={20}>Type</Th>
                             <Th key='filename' width={40}>Filename</Th>
-                            <Th key='lastUpdate' width={30}>Updated</Th>
+                            <Th key='status' width={30}>Status</Th>
                             <Th key='action'></Th>
                         </Tr>
                     </Thead>
                     <Tbody>
                         {files.map(file => {
                             const type = getProjectFileTypeTitle(file)
+                            const diffType = diff[file.name];
                             return <Tr key={file.name}>
                                 <Td>
                                     <Badge>{type}</Badge>
@@ -117,12 +116,26 @@ export function FilesTab () {
                                     </Button>
                                 </Td>
                                 <Td>
-                                    {needCommit(file.lastUpdate) &&
-                                        <Tooltip content="Updated after last commit" position={"right"}>
-                                            <Label color="grey">{getDate(file.lastUpdate)}</Label>
+                                    {needCommit(file.name) && diffType === 'CHANGED' &&
+                                        <Tooltip content="Show diff" position={"right"}>
+                                            <Label color="grey">
+                                                <Button size="sm" variant="link" className='labeled-button'
+                                                        icon={<DiffIcon/>}
+                                                        onClick={e => {
+                                                            setFile('diff', file, undefined);
+                                                            setId(Math.random().toString());
+                                                        }}>
+                                                    {diffType}
+                                                </Button>
+                                            </Label>
                                         </Tooltip>
                                     }
-                                    {!needCommit(file.lastUpdate) && getDate(file.lastUpdate)}
+                                    {needCommit(file.name) && diffType !== 'CHANGED' &&
+                                        <Label color="grey">{diffType}</Label>
+                                    }
+                                    {!needCommit(file.name) &&
+                                        <Label color="green" icon={<CheckIcon/>}/>
+                                    }
                                 </Td>
                                 <Td modifier={"fitContent"}>
                                     {canDeleteFiles() &&
@@ -138,6 +151,15 @@ export function FilesTab () {
                                         <Button className="dev-action-button"  size="sm" variant="plain" icon={<DownloadIcon/>} onClick={e => download(file)}/>
                                     </Tooltip>
                                 </Td>
+                            </Tr>
+                        })}
+                        {diff && Object.keys(diff).filter(f => diff[f] === 'DELETE').map(fileName => {
+                            const type = getProjectFileTypeByNameTitle(fileName)
+                            return <Tr key={fileName}>
+                                <Td><Badge>{type}</Badge></Td>
+                                <Td>{fileName}</Td>
+                                <Td><Label color="grey">{diff[fileName]}</Label></Td>
+                                <Td modifier={"fitContent"}></Td>
                             </Tr>
                         })}
                         {files.length === 0 &&

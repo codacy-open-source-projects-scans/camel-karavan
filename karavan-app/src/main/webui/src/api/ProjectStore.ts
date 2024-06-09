@@ -193,12 +193,14 @@ export const useProjectStore = createWithEqualityFn<ProjectState>((set) => ({
 
 interface FilesState {
     files: ProjectFile[];
+    diff: any;
     setFiles: (files: ProjectFile[]) => void;
     upsertFile: (file: ProjectFile) => void;
 }
 
 export const useFilesStore = createWithEqualityFn<FilesState>((set) => ({
     files: [],
+    diff: {},
     setFiles: (files: ProjectFile[]) => {
         set((state: FilesState) => ({
             files: files
@@ -215,9 +217,9 @@ export const useFilesStore = createWithEqualityFn<FilesState>((set) => ({
 
 interface FileState {
     file?: ProjectFile;
-    operation: "create" | "select" | "delete" | "none" | "copy" | "upload";
+    operation: "create" | "select" | "delete" | "none" | "copy" | "upload" | "diff";
     designerTab?: "routes" | "rest" | "beans" | "kamelet";
-    setFile: (operation:  "create" | "select" | "delete"| "none" | "copy" | "upload", file?: ProjectFile, designerTab?: "routes" | "rest" | "beans" | "kamelet") => void;
+    setFile: (operation:  "create" | "select" | "delete"| "none" | "copy" | "upload" | "diff", file?: ProjectFile, designerTab?: "routes" | "rest" | "beans" | "kamelet") => void;
 }
 
 export const useFileStore = createWithEqualityFn<FileState>((set) => ({
@@ -225,7 +227,7 @@ export const useFileStore = createWithEqualityFn<FileState>((set) => ({
     operation: "none",
     designerTab: undefined,
     addProperty: '',
-    setFile: (operation:  "create" | "select" | "delete"| "none" | "copy" | "upload", file?: ProjectFile, designerTab?: "routes" | "rest" | "beans" | "kamelet") => {
+    setFile: (operation:  "create" | "select" | "delete"| "none" | "copy" | "upload" | "diff", file?: ProjectFile, designerTab?: "routes" | "rest" | "beans" | "kamelet") => {
         set((state: FileState) => ({
             file: file,
             operation: operation,
