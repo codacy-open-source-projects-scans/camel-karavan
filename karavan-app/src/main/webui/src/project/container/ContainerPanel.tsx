@@ -35,10 +35,8 @@ import {ContainerStatus} from "../../api/ProjectModels";
 import {ContainerButtons} from "./ContainerButtons";
 import DeleteIcon from "@patternfly/react-icons/dist/esm/icons/times-circle-icon";
 import ImageIcon from "@patternfly/react-icons/dist/esm/icons/cube-icon";
-import CommitIcon from "@patternfly/react-icons/dist/esm/icons/code-branch-icon";
 import {KaravanApi} from "../../api/KaravanApi";
 import {EventBus} from "../../designer/utils/EventBus";
-import {getShortCommit} from "../../util/StringUtils";
 
 interface Props {
     env: string,
@@ -91,7 +89,7 @@ export function ContainerPanel(props: Props) {
 
     const env = props.env;
     const conts = containers
-        .filter(c => c.env == env)
+        .filter(c => c.env === env)
         .filter(d => d.projectId === project?.projectId && d.type === 'project');
     return (
         <Flex justifyContent={{default: "justifyContentSpaceBetween"}}
@@ -177,7 +175,7 @@ export function ContainerPanel(props: Props) {
                 </Flex>
             </FlexItem>
             <FlexItem>
-                {env === "dev" && config.infrastructure !== 'kubernetes' && <ContainerButtons env={env}/>}
+                {env === config.environment && config.infrastructure !== 'kubernetes' && <ContainerButtons env={env}/>}
             </FlexItem>
             {showDeleteConfirmation && getDeleteConfirmation()}
         </Flex>

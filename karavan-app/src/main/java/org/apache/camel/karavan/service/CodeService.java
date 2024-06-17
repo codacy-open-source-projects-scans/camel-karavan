@@ -41,6 +41,9 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.apache.camel.karavan.KaravanConstants.DEVMODE_IMAGE;
+import static org.apache.camel.karavan.KaravanConstants.DEV_ENVIRONMENT;
+
 @ApplicationScoped
 public class CodeService {
 
@@ -78,6 +81,20 @@ public class CodeService {
             "limits.cpu", "2000m"
     );
 
+    public String getProjectDevModeImage(String projectId) {
+        try {
+            ProjectFile appProp = getApplicationProperties(projectId);
+            return getPropertyValue(appProp.getCode(), DEVMODE_IMAGE);
+        } catch (Exception e) {
+            LOGGER.error("getProjectDevModeImage " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
+            return null;
+        }
+    }
+
+    private ProjectFile getApplicationProperties(String projectId) {
+        return karavanCache.getProjectFile(projectId, APPLICATION_PROPERTIES_FILENAME);
+    }
+
     public Map<String, String> getProjectFilesForDevMode(String projectId, Boolean withKamelets) {
         Map<String, String> files = karavanCache.getProjectFiles(projectId).stream()
                 .filter(f -> !f.getName().endsWith(MARKDOWN_EXTENSION))
@@ -112,7 +129,7 @@ public class CodeService {
         return result;
     }
 
-    public ProjectFile getApplicationProperties(Project project) {
+    public ProjectFile generateApplicationProperties(Project project) {
         String code = getTemplateText(APPLICATION_PROPERTIES_FILENAME);
         if (code != null) {
             code = code.replace("{projectId}", project.getProjectId());
@@ -285,15 +302,17 @@ public class CodeService {
         return getProjectPort(composeFile);
     }
 
-
     public DockerComposeService getDockerComposeService(String projectId) {
-        ProjectFile compose = karavanCache.getProjectFile(projectId, PROJECT_COMPOSE_FILENAME);
+        String composeFileName = PROJECT_COMPOSE_FILENAME;
+        if (!Objects.equals(environment, DEV_ENVIRONMENT)) {
+            composeFileName = environment + "." + PROJECT_COMPOSE_FILENAME;
+        }
+        ProjectFile compose = karavanCache.getProjectFile(projectId, composeFileName);
         if (compose != null) {
             return DockerComposeConverter.fromCode(compose.getCode(), projectId);
         }
         return null;
     }
-
     public void updateDockerComposeImage(String projectId, String imageName) {
         ProjectFile compose = karavanCache.getProjectFile(projectId, PROJECT_COMPOSE_FILENAME);
         if (compose != null) {

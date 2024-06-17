@@ -36,7 +36,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.apache.camel.karavan.KaravanConstants.DEFAULT_ENVIRONMENT;
+import static org.apache.camel.karavan.KaravanConstants.DEV_ENVIRONMENT;
 import static org.apache.camel.karavan.KaravanEvents.*;
 import static org.apache.camel.karavan.service.CodeService.*;
 
@@ -97,11 +97,12 @@ public class ProjectService {
             eventBus.publish(POD_CONTAINER_UPDATED, JsonObject.mapFrom(status));
 
             Map<String, String> files = codeService.getProjectFilesForDevMode(project.getProjectId(), true);
+            String projectDevmodeImage = codeService.getProjectDevModeImage(project.getProjectId());
             if (ConfigService.inKubernetes()) {
-                kubernetesService.runDevModeContainer(project, jBangOptions, files);
+                kubernetesService.runDevModeContainer(project, jBangOptions, files, projectDevmodeImage);
             } else {
                 DockerComposeService dcs = codeService.getDockerComposeService(project.getProjectId());
-                dockerForKaravan.runProjectInDevMode(project.getProjectId(), jBangOptions, dcs.getPortsMap(), files);
+                dockerForKaravan.runProjectInDevMode(project.getProjectId(), jBangOptions, dcs.getPortsMap(), files, projectDevmodeImage);
             }
             return containerName;
         } else {
@@ -237,7 +238,7 @@ public class ProjectService {
             throw new Exception("Project with id " + project.getProjectId() + " already exists");
         } else {
             karavanCache.saveProject(project);
-            ProjectFile appProp = codeService.getApplicationProperties(project);
+            ProjectFile appProp = codeService.generateApplicationProperties(project);
             karavanCache.saveProjectFile(appProp, false);
             if (!ConfigService.inKubernetes()) {
                 ProjectFile projectCompose = codeService.createInitialProjectCompose(project, getMaxPortMappedInProjects() + 1);
@@ -268,7 +269,7 @@ public class ProjectService {
                             !Objects.equals(e.getValue().getName(), PROJECT_DEPLOYMENT_JKUBE_FILENAME)
                     )
                     .collect(Collectors.toMap(
-                            e -> GroupedKey.create(project.getProjectId(), DEFAULT_ENVIRONMENT, e.getValue().getName()),
+                            e -> GroupedKey.create(project.getProjectId(), DEV_ENVIRONMENT, e.getValue().getName()),
                             e -> {
                                 ProjectFile file = e.getValue();
                                 file.setProjectId(project.getProjectId());
@@ -314,14 +315,18 @@ public class ProjectService {
     }
 
     private int getMaxPortMappedInProjects() {
-        List<ProjectFile> files =  karavanCache.getProjectFilesByName(PROJECT_COMPOSE_FILENAME).stream()
-                .filter(f -> !Objects.equals(f.getProjectId(), Project.Type.templates.name())).toList();
-        if (!files.isEmpty()) {
-            return files.stream().map(this::getProjectPort)
-                    .filter(Objects::nonNull)
-                    .mapToInt(Integer::intValue)
-                    .max().orElse(INTERNAL_PORT);
-        } else {
+        try {
+            List<ProjectFile> files = karavanCache.getProjectFilesByName(PROJECT_COMPOSE_FILENAME).stream()
+                    .filter(f -> !Objects.equals(f.getProjectId(), Project.Type.templates.name())).toList();
+            if (!files.isEmpty()) {
+                return files.stream().map(this::getProjectPort)
+                        .filter(Objects::nonNull)
+                        .mapToInt(Integer::intValue)
+                        .max().orElse(INTERNAL_PORT);
+            } else {
+                return INTERNAL_PORT;
+            }
+        } catch (Exception e) {
             return INTERNAL_PORT;
         }
     }
