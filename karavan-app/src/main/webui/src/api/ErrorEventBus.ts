@@ -14,20 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {Subject} from 'rxjs';
 
+const apiErrors = new Subject<any>();
 
-.add-button-icon, .insert-button-icon {
-    fill: var(--pf-v5-global--primary-color--100);
-    width: 20px;
-    height: 20px;
-    background: transparent;
-    vertical-align: text-bottom;
-}
+export const ErrorEventBus = {
 
-.delete-button-icon {
-    fill: var(--pf-v5-global--danger-color--100);
-    width: 20px;
-    height: 20px;
-    background: transparent;
-    vertical-align: text-bottom;
+    sendApiError: (error: any) =>  apiErrors.next(error),
+    onApiError: () => apiErrors.asObservable(),
 }

@@ -397,8 +397,8 @@
 }
 
 .karavan .dsl-page .graph .connections .icon {
-    height: 20px;
-    width: 20px;
+    height: 22px;
+    width: 22px;
 }
 
 .karavan .dsl-page .graph .connections .arrow {
@@ -711,6 +711,13 @@
     flex-grow: 1;
     background-color: var(--pf-v5-global--BackgroundColor--light-300);
     margin-bottom: 100px;
+}
+
+.karavan .scrolled-page {
+    overflow: auto;
+    flex-shrink: unset;
+    flex-grow: 1;
+    background-color: var(--pf-v5-global--BackgroundColor--light-300);
 }
 
 .karavan .knowledbase-eip-section .pf-v5-c-toggle-group {
