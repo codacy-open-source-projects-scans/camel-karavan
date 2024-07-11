@@ -18,13 +18,15 @@ package org.apache.camel.karavan.listener;
 
 import io.quarkus.vertx.ConsumeEvent;
 import io.vertx.core.json.JsonObject;
+import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
+import org.apache.camel.karavan.model.Project;
 import org.apache.camel.karavan.service.ProjectService;
 import org.jboss.logging.Logger;
 
-import static org.apache.camel.karavan.KaravanEvents.CMD_PUSH_PROJECT;
+import static org.apache.camel.karavan.KaravanEvents.*;
 
 @Default
 @ApplicationScoped
@@ -35,13 +37,32 @@ public class CommitListener {
     @Inject
     ProjectService projectService;
 
+    @Inject
+    EventBus eventBus;
+
     @ConsumeEvent(value = CMD_PUSH_PROJECT, blocking = true, ordered = true)
     public void onCommitAndPush(JsonObject event) throws Exception {
         LOGGER.info("Commit event: " + event.encodePrettily());
-        String projectId = event.getString("projectId");
-        String message = event.getString("message");
-        String userId = event.getString("userId");
-        String eventId = event.getString("eventId");
-        projectService.commitAndPushProject(projectId, message, userId, eventId);
+            String projectId = event.getString("projectId");
+            String message = event.getString("message");
+            String userId = event.getString("userId");
+            String eventId = event.getString("eventId");
+        try {
+            Project p = projectService.commitAndPushProject(projectId, message);
+            if (userId != null) {
+                eventBus.publish(COMMIT_HAPPENED, JsonObject.of("userId", userId, "eventId", eventId, "project", JsonObject.mapFrom(p)));
+            }
+        } catch (Exception e) {
+            var error = e.getCause() != null ? e.getCause() : e;
+            LOGGER.error("Failed to commit event", error);
+            if (userId != null) {
+                eventBus.publish(ERROR_HAPPENED, JsonObject.of(
+                        "userId", userId,
+                        "eventId", eventId,
+                        "className", Project.class.getSimpleName(),
+                        "error", "Failed to commit event: " + e.getMessage())
+                );
+            }
+        }
     }
 }
