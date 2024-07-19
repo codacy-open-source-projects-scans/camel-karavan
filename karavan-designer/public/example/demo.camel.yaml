@@ -1,114 +1,48 @@
 - route:
-    id: route-654e
-    description: Error Handler
-    nodePrefixId: route-a06
+    id: route-b0b7
+    nodePrefixId: route-dfc
     from:
-      id: from-6dd1
-      description: DLQ
+      id: from-70b1
+      uri: kamelet:timer-source
+      parameters:
+        message: Hello
+        period: 1
+      steps:
+        - to:
+            id: to-df39
+            uri: amqp
+        - to:
+            id: to-1600
+            uri: kamelet:kafka-sink
+        - to:
+            id: to-d9bc
+            uri: pdf
+        - to:
+            id: to-4588
+            uri: controlbus
+        - to:
+            id: to-ac40
+            uri: vertx
+            parameters:
+              address: DATA
+        - to:
+            id: to-3855
+            uri: direct
+            parameters:
+              name: hello-world-direct
+- route:
+    id: route-d18a
+    nodePrefixId: route-f11
+    from:
+      id: from-519d
+      uri: vertx
+      parameters:
+        address: DATA
+- route:
+    id: route-06fe
+    nodePrefixId: route-0b9
+    from:
+      id: from-f068
       uri: direct
       parameters:
-        name: dlq
-      steps:
-        - log:
-            id: log-bf00
-            message: "ERROR: ${exception}"
-- route:
-    id: route-c11a
-    description: From Warehouse
-    nodePrefixId: route-ae1
-    autoStartup: true
-    from:
-      id: from-b6f1
-      description: Command received
-      uri: kamelet:kafka-not-secured-source
-      parameters:
-        topic: wh_commands
-        bootstrapServers: kafka:9092
-        autoCommitEnable: true
-        consumerGroup: lightstep
-      steps:
-        - log:
-            id: log-c7b9
-            description: Log request
-            message: "Received command: ${body}, current sequence: ${variable.sequence}"
-        - setVariable:
-            id: setVariable-61a9
-            description: Set command
-            name: command
-            expression:
-              simple:
-                id: simple-965d
-                expression: ${body}
-        - setBody:
-            id: setBody-0515
-            description: Prepare message
-            expression:
-              groovy:
-                id: groovy-bb4f
-                expression: >-
-                  def seq = String.format("%03d",
-                  camelContext.getVariable("sequence"));
-
-                  def length = String.format("%04d",
-                  variables.command.length());
-
-
-                  return String.valueOf((char)0x02)
-                      .concat(seq)
-                      .concat(length)
-                      .concat(variables.command)
-                      .concat(String.valueOf((char)0x03));
-        - log:
-            id: log-7190
-            description: Log message
-            message: "Message: ${body}"
-        - to:
-            id: to-bb55
-            description: Call Controller
-            uri: netty
-            parameters:
-              protocol: tcp
-              host: 208.167.255.177
-              port: "15003"
-              disconnect: false
-              keepAlive: false
-              requestTimeout: "10000"
-              useByteBuf: false
-              autoAppendDelimiter: true
-              allowDefaultCodec: true
-              reuseAddress: true
-        - setVariable:
-            id: setVariable-048c
-            description: Update sequence
-            name: global:sequence
-            expression:
-              simple:
-                id: simple-340f
-                expression: ${variable.sequence} + 1
-        - log:
-            id: log-b944
-            description: Log result
-            message: "Response: ${body}, next sequence: ${variable.sequence}"
-- route:
-    id: route-42e3
-    description: Events from JunctionBox
-    nodePrefixId: route-de0
-    autoStartup: false
-    from:
-      id: from-5b8a
-      description: Event received
-      uri: netty
-      parameters:
-        protocol: tcp
-        host: 208.167.255.177
-        port: "15003"
-        clientMode: true
-      steps:
-        - log:
-            id: log-63db
-            message: ${body}
-- routeConfiguration:
-    errorHandler:
-      deadLetterChannel:
-        id: deadLetterChannel-3bf9
-        deadLetterUri: direct:dlq
+        name: hello-world-direct
