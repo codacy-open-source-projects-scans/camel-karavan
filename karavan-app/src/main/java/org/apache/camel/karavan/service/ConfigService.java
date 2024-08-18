@@ -22,6 +22,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.apache.camel.karavan.KaravanCache;
+import org.apache.camel.karavan.KaravanConstants;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
 import org.apache.camel.karavan.model.Configuration;
 import org.apache.camel.karavan.model.Project;
@@ -37,7 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.apache.camel.karavan.KaravanConstants.DEV_ENVIRONMENT;
+import static org.apache.camel.karavan.KaravanConstants.DEV;
 import static org.apache.camel.karavan.service.CodeService.BUILD_SCRIPT_FILENAME;
 
 @ApplicationScoped
@@ -51,7 +52,7 @@ public class ConfigService {
     @ConfigProperty(name = "karavan.version")
     String version;
 
-    @ConfigProperty(name = "karavan.environment")
+    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
     String environment;
 
     @ConfigProperty(name = "karavan.environments")
@@ -108,7 +109,7 @@ public class ConfigService {
     }
 
     public void shareOnStartup() {
-        if (ConfigService.inKubernetes() && environment.equals(DEV_ENVIRONMENT)) {
+        if (ConfigService.inKubernetes() && environment.equals(DEV)) {
             LOGGER.info("Creating Configmap for " + BUILD_SCRIPT_FILENAME);
             try {
                 share(BUILD_SCRIPT_FILENAME);
@@ -136,19 +137,20 @@ public class ConfigService {
         var filename = f.getName();
         var parts = filename.split("\\.");
         var prefix = parts[0];
-        if (environment.equals(DEV_ENVIRONMENT) && !getEnvs().contains(prefix)) { // no prefix AND dev env
-            storeFile(f);
-        } else if (Objects.equals(prefix, environment)){ // with prefix == env
-            storeFile(f);
+        if (environment.equals(DEV) && !getEnvs().contains(prefix)) { // no prefix AND dev env
+            storeFile(f.getName(), f.getCode());
+        } else if (Objects.equals(prefix, environment)) { // with prefix == env
+            filename = f.getName().substring(environment.length() + 1);
+            storeFile(filename, f.getCode());
         }
     }
 
-    private void storeFile(ProjectFile f) throws Exception {
+    private void storeFile(String filename , String code) throws Exception {
         if (inKubernetes()) {
-            createConfigMapFromFile(f.getName(), f.getCode());
+            createConfigMapFromFile(filename, code);
         } else {
             if (sharedFolder.isPresent()) {
-                Files.writeString(Paths.get(sharedFolder.get(), f.getName()), f.getCode());
+                Files.writeString(Paths.get(sharedFolder.get(), filename), code);
             } else {
                 throw new Exception("Shared folder not configured");
             }
@@ -156,7 +158,7 @@ public class ConfigService {
     }
 
     private List<String> getEnvs() {
-        return environments.orElse(List.of(DEV_ENVIRONMENT));
+        return environments.orElse(List.of(DEV));
     }
 
     private void createConfigMapFromFile(String filename, String content) {

@@ -46,8 +46,10 @@ import static org.apache.camel.karavan.service.CodeService.*;
 public class ProjectService {
 
     private static final Logger LOGGER = Logger.getLogger(ProjectService.class.getName());
+    private static final String DEFAULT_AUTHOR_NAME = "karavan";
+    private static final String DEFAULT_AUTHOR_EMAIL = "karavan@test.org";
 
-    @ConfigProperty(name = "karavan.environment")
+    @ConfigProperty(name = "karavan.environment", defaultValue = DEV)
     String environment;
 
     @Inject
@@ -68,18 +70,27 @@ public class ProjectService {
     @Inject
     EventBus eventBus;
 
+
     public Project commitAndPushProject(String projectId, String message) throws Exception {
-        LOGGER.info("Commit project: " + projectId);
-        Project p = karavanCache.getProject(projectId);
-        List<ProjectFile> files = karavanCache.getProjectFiles(projectId);
-        RevCommit commit = gitService.commitAndPushProject(p, files, message);
-        karavanCache.syncFilesCommited(projectId);
-        String commitId = commit.getId().getName();
-        Long lastUpdate = commit.getCommitTime() * 1000L;
-        p.setLastCommit(commitId);
-        p.setLastCommitTimestamp(lastUpdate);
-        karavanCache.saveProject(p);
-        return p;
+        return commitAndPushProject(projectId, message, DEFAULT_AUTHOR_NAME, DEFAULT_AUTHOR_EMAIL);
+    }
+
+    public Project commitAndPushProject(String projectId, String message, String authorName, String authorEmail) throws Exception {
+        if (Objects.equals(environment, DEV)) {
+            LOGGER.info("Commit project: " + projectId);
+            Project p = karavanCache.getProject(projectId);
+            List<ProjectFile> files = karavanCache.getProjectFiles(projectId);
+            RevCommit commit = gitService.commitAndPushProject(p, files, message, authorName, authorEmail);
+            karavanCache.syncFilesCommited(projectId);
+            String commitId = commit.getId().getName();
+            Long lastUpdate = commit.getCommitTime() * 1000L;
+            p.setLastCommit(commitId);
+            p.setLastCommitTimestamp(lastUpdate);
+            karavanCache.saveProject(p);
+            return p;
+        } else {
+            throw new RuntimeException("Unsupported environment: " + environment);
+        }
     }
 
     public String runProjectWithJBangOptions(Project project, String jBangOptions) throws Exception {
@@ -255,7 +266,7 @@ public class ProjectService {
                             !Objects.equals(e.getValue().getName(), PROJECT_DEPLOYMENT_JKUBE_FILENAME)
                     )
                     .collect(Collectors.toMap(
-                            e -> GroupedKey.create(project.getProjectId(), DEV_ENVIRONMENT, e.getValue().getName()),
+                            e -> GroupedKey.create(project.getProjectId(), DEV, e.getValue().getName()),
                             e -> {
                                 ProjectFile file = e.getValue();
                                 file.setProjectId(project.getProjectId());

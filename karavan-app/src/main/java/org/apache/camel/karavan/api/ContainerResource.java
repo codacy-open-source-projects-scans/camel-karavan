@@ -25,6 +25,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.camel.karavan.KaravanCache;
+import org.apache.camel.karavan.KaravanConstants;
 import org.apache.camel.karavan.docker.DockerComposeConverter;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
@@ -59,7 +60,7 @@ public class ContainerResource {
     @Inject
     ProjectService projectService;
 
-    @ConfigProperty(name = "karavan.environment")
+    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
     String environment;
 
     private static final Logger LOGGER = Logger.getLogger(ContainerResource.class.getName());
@@ -140,11 +141,11 @@ public class ContainerResource {
         }
     }
 
-    private boolean needPull(JsonObject command) {
-        if (command != null && command.containsKey("pullImage")) {
-            return command.getBoolean("pullImage");
-        }
-        return false;
+    private DockerService.PULL_IMAGE needPull(JsonObject command) {
+        try {
+            return DockerService.PULL_IMAGE.valueOf(command.getString("pullImage"));
+        } catch (Exception ignored) {}
+        return DockerService.PULL_IMAGE.never;
     }
 
     private void setContainerStatusTransit(String projectId, String name, String type) {

@@ -15,15 +15,44 @@
  * limitations under the License.
  */
 
-import * as React from 'react';
+package org.apache.camel.karavan.model;
 
-import './topology.css';
-import {DefaultGroup, observer} from '@patternfly/react-topology';
+public class DockerComposeVolume {
 
-const CustomGroup: React.FC<any> = observer(({ element, ...rest }) => {
-    return (
-        <DefaultGroup element={element} className={"topology-group"} {...rest}>
-        </DefaultGroup>
-    )
-})
-export default CustomGroup;
+    private String type;
+    private String source;
+    private String target;
+
+    public DockerComposeVolume() {
+    }
+
+    public DockerComposeVolume(String type, String source, String target) {
+        this.type = type;
+        this.source = source;
+        this.target = target;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getTarget() {
+        return target;
+    }
+
+    public void setTarget(String target) {
+        this.target = target;
+    }
+}
