@@ -14,22 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
 
-export function AutoStartupIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="icon" width="24px" height="24px">
-            <circle cx="16" cy="16" r="13" fill="white" stroke="black" strokeWidth="1px"/>
-            <path d="M19.88 21.847h2l-5-12h-2l-5 12h2l1.24-3h5.53zm-5.93-5 1.82-4.42h.25l1.86 4.42z"/>
-        </svg>
-    );
-}
+package org.apache.camel.karavan.scheduler;
 
-export function ErrorHandlerIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="icon" width="24px" height="24px">
-            <circle cx="16" cy="16" r="13" fill="white" stroke="black" strokeWidth="1px"/>
-            <path d="m19.264 14.98-3.998 7-1.736-1 2.287-4h-3.889l3.993-7 1.737 1-2.284 4z"/>
-        </svg>
-    );
+import io.quarkus.scheduler.Scheduled;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.apache.camel.karavan.service.NotificationService;
+import org.jboss.resteasy.reactive.server.jaxrs.OutboundSseEventImpl;
+
+
+@ApplicationScoped
+public class NotificationPingScheduler {
+
+    @Inject
+    NotificationService notificationService;
+
+    @Scheduled(every = "30s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    public void ping() {
+        notificationService.getSinks().forEach(sink -> {
+            if (!sink.isClosed()) {
+                sink.send(new OutboundSseEventImpl.BuilderImpl().name("ping").data(String.class, "ping").build());
+            }
+        });
+    }
 }

@@ -170,8 +170,6 @@ export class RouteToCreate {
     }
 }
 
-export const NAV_COMPONENTS = ['direct', 'seda', 'vertx']
-
 const INTEGRATION_PATTERNS = 'Integration Patterns';
 
 const stepConvertMap = new Map<string, string>([
@@ -205,7 +203,6 @@ export class CamelUi {
             .reduce((accumulator, value) => accumulator.concat(value), [])
             .filter((nav, i, arr) => arr.findIndex(l => l === nav) === i)
             .filter((nav, i, arr) => !['dataformat'].includes(nav));
-        console.log(navs);
         const connectorNavs = [INTEGRATION_PATTERNS, "kamelet", "component"];
         const eipLabels = connectorNavs.filter(n => navs.includes(n));
         return eipLabels.map(label => [label, this.getSelectorModelsForParentFiltered(parentDsl, label, true)
@@ -342,7 +339,7 @@ export class CamelUi {
             .filter((r: RouteDefinition) => r.from.uri.startsWith(componentName))
             .forEach((r: RouteDefinition) => {
                 const uri = r.from.uri;
-                const name = r.from.parameters.name;
+                const name = componentName === 'vertx' ? r.from.parameters.address :  r.from.parameters.name;
                 if (showComponentName && name) {
                     result.push(uri + ":" + name);
                 } else if (name){
@@ -352,7 +349,7 @@ export class CamelUi {
         return result;
     }
 
-    static getInternalUris = (files: IntegrationFile[], direct: boolean, seda: boolean) => {
+    static getInternalUris = (files: IntegrationFile[], direct: boolean, seda: boolean, vertx: boolean) => {
         const urls: string[] = [];
         const integrations = getIntegrations(files);
         integrations.forEach(i => {
@@ -361,6 +358,9 @@ export class CamelUi {
             }
             if (seda) {
                 urls.push(...CamelUi.getInternalRouteUris(i, "seda"));
+            }
+            if (vertx) {
+                urls.push(...CamelUi.getInternalRouteUris(i, "vertx"));
             }
         })
         return urls;
