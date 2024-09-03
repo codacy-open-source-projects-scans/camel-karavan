@@ -20,8 +20,10 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.model.ContainerImage;
 import org.apache.camel.karavan.model.RegistryConfig;
@@ -35,9 +37,10 @@ import java.util.HashMap;
 import java.util.List;
 
 import static org.apache.camel.karavan.KaravanEvents.CMD_PULL_IMAGES;
+import static org.apache.camel.karavan.KaravanEvents.CMD_PUSH_PROJECT;
 
 @Path("/ui/image")
-public class ImagesResource {
+public class ImagesResource extends AbstractApiResource {
 
     @Inject
     DockerService dockerService;
@@ -59,7 +62,7 @@ public class ImagesResource {
             return List.of();
         } else {
             RegistryConfig registryConfig = registryService.getRegistryConfig();
-            String pattern = registryConfig.getGroup() + "/" + projectId;
+            String pattern = registryConfig.getGroup() + "/" + projectId + ":";
             return dockerService.getImages()
                     .stream().filter(s -> s.getTag().contains(pattern))
                     .sorted(Comparator.comparing(ContainerImage::getCreated).reversed().thenComparing(ContainerImage::getTag))
@@ -71,8 +74,11 @@ public class ImagesResource {
     @Path("/project/{projectId}")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response setProjectImage(JsonObject data, @PathParam("projectId") String projectId) throws Exception {
+    public Response setProjectImage(JsonObject data, @PathParam("projectId") String projectId, @Context SecurityContext securityContext) throws Exception {
         try {
+            var identity = getIdentity(securityContext);
+            data.put("authorName", identity.get("name"));
+            data.put("authorEmail", identity.get("email"));
             projectService.setProjectImage(projectId, data);
             return Response.ok().entity(data.getString("imageName")).build();
         } catch (Exception e) {
