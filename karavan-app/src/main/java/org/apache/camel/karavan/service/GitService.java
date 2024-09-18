@@ -18,7 +18,6 @@ package org.apache.camel.karavan.service;
 
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
-import io.quarkus.oidc.UserInfo;
 import io.smallrye.mutiny.tuples.Tuple2;
 import io.vertx.core.Vertx;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -30,32 +29,23 @@ import org.eclipse.jgit.api.errors.InvalidRemoteException;
 import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.diff.DiffEntry;
-import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevTree;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.transport.*;
 import org.eclipse.jgit.transport.ssh.jsch.JschConfigSessionFactory;
-import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.StreamSupport;
 
 @ApplicationScoped
 public class GitService {
@@ -120,7 +110,7 @@ public class GitService {
         return new GitConfig(repository, username.orElse(null), password.orElse(null), branch, privateKeyPath.orElse(null));
     }
 
-    public RevCommit commitAndPushProject(Project project, List<ProjectFile> files, String message, String authorName, String authorEmail) throws GitAPIException, IOException, URISyntaxException {
+    public RevCommit commitAndPushProject(Project project, List<ProjectFile> files, String message, String authorName, String authorEmail, List<String> fileNames) throws GitAPIException, IOException, URISyntaxException {
         LOGGER.info("Commit and push project " + project.getProjectId());
         GitConfig gitConfig = getGitConfig();
         String uuid = UUID.randomUUID().toString();
@@ -138,7 +128,7 @@ public class GitService {
 //        }
         writeProjectToFolder(folder, project, files);
         addDeletedFilesToIndex(git, folder, project, files);
-        return commitAddedAndPush(git, gitConfig.getBranch(), message, authorName, authorEmail);
+        return commitAddedAndPush(git, gitConfig.getBranch(), message, authorName, authorEmail, fileNames, project.getProjectId());
     }
 
     public List<GitRepo> readProjectsToImport() {
@@ -167,10 +157,10 @@ public class GitService {
                     String name = entry.getKey();
                     String body = entry.getValue();
                     Tuple2<String, Integer> fileCommit = lastCommit(git, project + File.separator + name);
-                    files.add(new GitRepoFile(name, Integer.valueOf(fileCommit.getItem2()).longValue() * 1000, body));
+                    files.add(new GitRepoFile(name, fileCommit.getItem2().longValue() * 1000, body));
                 }
                 Tuple2<String, Integer> commit = lastCommit(git, project);
-                GitRepo repo = new GitRepo(project, commit.getItem1(), Integer.valueOf(commit.getItem2()).longValue() * 1000, files);
+                GitRepo repo = new GitRepo(project, commit.getItem1(), commit.getItem2().longValue() * 1000, files);
                 result.add(repo);
             }
             return result;
@@ -279,9 +269,13 @@ public class GitService {
         });
     }
 
-    public RevCommit commitAddedAndPush(Git git, String branch, String message, String authorName, String authorEmail) throws GitAPIException {
+    public RevCommit commitAddedAndPush(Git git, String branch, String message, String authorName, String authorEmail, List<String> fileNames, String projectId) throws GitAPIException {
         LOGGER.info("Commit and push changes to the branch " + branch);
-        LOGGER.info("Git add: " + git.add().addFilepattern(".").call());
+        AddCommand add = git.add();
+        for (String fileName : fileNames) {
+            add = add.addFilepattern(projectId + File.separator + fileName);
+        }
+        LOGGER.info("Git add: " + add.call());
         RevCommit commit = git.commit().setMessage(message).setAuthor(new PersonIdent(authorName, authorEmail)).call();
         LOGGER.info("Git commit: " + commit);
         if (!ephemeral) {
@@ -320,7 +314,7 @@ public class GitService {
         try {
             Git git = getGit(true, folder);
             addDeletedFolderToIndex(git, projectId);
-            commitAddedAndPush(git, gitConfig.getBranch(), commitMessage, authorName, authorEmail);
+            commitAddedAndPush(git, gitConfig.getBranch(), commitMessage, authorName, authorEmail, List.of("."), projectId);
             LOGGER.info("Delete Temp folder " + folder);
             vertx.fileSystem().deleteRecursiveBlocking(folder, true);
             LOGGER.infof("Project %s deleted from Git", projectId);

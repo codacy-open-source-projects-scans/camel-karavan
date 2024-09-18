@@ -22,7 +22,7 @@ import {
     TextVariants,
     ExpandableSection,
     Button,
-    Tooltip,
+    Tooltip, ToggleGroupItem, ToggleGroup, TextInput,
 } from '@patternfly/react-core';
 import '../karavan.css';
 import './DslProperties.css';
@@ -39,6 +39,8 @@ import {shallow} from "zustand/shallow";
 import {usePropertiesHook} from "./usePropertiesHook";
 import {CamelDisplayUtil} from "karavan-core/lib/api/CamelDisplayUtil";
 import {PropertiesHeader} from "./PropertiesHeader";
+import {PropertyUtil} from "./property/PropertyUtil";
+import {usePropertiesStore} from "./PropertyStore";
 
 interface Props {
     designerType: 'routes' | 'rest' | 'beans'
@@ -60,6 +62,9 @@ export function DslProperties(props: Props) {
     const [selectedStep, dark]
         = useDesignerStore((s) => [s.selectedStep, s.dark], shallow)
 
+    const [propertyFilter, changedOnly, requiredOnly, setChangedOnly, setPropertyFilter, setRequiredOnly]
+        = usePropertiesStore((s) => [s.propertyFilter, s.changedOnly, s.requiredOnly, s.setChangedOnly, s.setPropertyFilter, s.setRequiredOnly], shallow)
+
     const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
     function getClonableElementHeader(): React.JSX.Element {
@@ -80,7 +85,7 @@ export function DslProperties(props: Props) {
         )
     }
 
-    function getComponentHeader(): JSX.Element {
+    function getPropertiesHeader(): JSX.Element {
         if (props.designerType === 'routes') return <PropertiesHeader designerType={props.designerType} />
         else return getClonableElementHeader();
     }
@@ -88,7 +93,8 @@ export function DslProperties(props: Props) {
     function getProperties(): PropertyMeta[] {
         const dslName = selectedStep?.dslName;
         return CamelDefinitionApiExt.getElementProperties(dslName)
-            // .filter((p: PropertyMeta) => (showAdvanced && p.label.includes('advanced')) || (!showAdvanced && !p.label.includes('advanced')))
+            .filter((p: PropertyMeta) => !(p.name === 'uri' && dslName !== 'ToDynamicDefinition')) // show uri only to Dynamic To
+            // .filer((p: PropertyMeta) => (showAdvanced && p.label.includes('advanced')) || (!showAdvanced && !p.label.includes('advanced')))
             .filter((p: PropertyMeta) => !p.isObject || (p.isObject && !CamelUi.dslHasSteps(p.type)) || (dslName === 'CatchDefinition' && p.name === 'onWhen'))
             .filter((p: PropertyMeta) => !(dslName === 'RestDefinition' && ['get', 'post', 'put', 'patch', 'delete', 'head'].includes(p.name)));
         // .filter((p: PropertyMeta) => dslName && !(['RestDefinition', 'GetDefinition', 'PostDefinition', 'PutDefinition', 'PatchDefinition', 'DeleteDefinition', 'HeadDefinition'].includes(dslName) && ['param', 'responseMessage'].includes(p.name))) // TODO: configure this properties
@@ -100,7 +106,7 @@ export function DslProperties(props: Props) {
                 <DslPropertyField key={property.name}
                                   property={property}
                                   element={selectedStep}
-                                  value={selectedStep ? (selectedStep as any)[property.name] : undefined}
+                                  value={getPropertyValue(property)}
                                   onExpressionChange={onExpressionChange}
                                   onParameterChange={onParametersChange}
                                   onDataFormatChange={onDataFormatChange}
@@ -110,30 +116,71 @@ export function DslProperties(props: Props) {
         </>)
     }
 
+    function getPropertyValue(property: PropertyMeta) {
+        return selectedStep ? (selectedStep as any)[property.name] : undefined;
+    }
+
+    function getFilteredProperties(): PropertyMeta[] {
+        let propertyMetas = !dataFormatElement ? getProperties() : getProperties().filter(p => !dataFormats.includes(p.name));
+        const filter = propertyFilter.toLocaleLowerCase()
+        propertyMetas = propertyMetas.filter(p => p.name === 'parameters' || p.name.toLocaleLowerCase().includes(filter) || p.label.toLocaleLowerCase().includes(filter) || p.displayName.toLocaleLowerCase().includes(filter));
+        if (requiredOnly) {
+            propertyMetas = propertyMetas.filter(p => p.name === 'parameters' || p.required);
+        }
+        if (changedOnly) {
+            propertyMetas = propertyMetas.filter(p =>p.name === 'parameters' || PropertyUtil.hasDslPropertyValueChanged(p, getPropertyValue(p)));
+        }
+        return propertyMetas
+    }
+
     const dataFormats = DataFormats.map(value => value[0]);
     const dataFormatElement = selectedStep !== undefined && ['MarshalDefinition', 'UnmarshalDefinition'].includes(selectedStep.dslName);
-    const properties = !dataFormatElement
-        ? getProperties()
-        : getProperties().filter(p => !dataFormats.includes(p.name));
+    const properties = getFilteredProperties();
     const propertiesMain = properties.filter(p => !p.label.includes("advanced"));
     const propertiesAdvanced = properties.filter(p => p.label.includes("advanced"));
+
+    function getPropertySelector() {
+        return (
+            <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '3px'}}>
+                <ToggleGroup aria-label="properties selctor">
+                    <ToggleGroupItem
+                        text="Required"
+                        buttonId="requiredOnly"
+                        isSelected={requiredOnly}
+                        onChange={(_, selected) => setRequiredOnly(selected)}
+                    />
+                    <ToggleGroupItem
+                        text="Changed"
+                        buttonId="changedOnly"
+                        isSelected={changedOnly}
+                        onChange={(_, selected) => setChangedOnly(selected)}
+                    />
+                </ToggleGroup>
+                <TextInput
+                    placeholder="filter by name"
+                    value={propertyFilter}
+                    onChange={(_, value) => setPropertyFilter(value)}
+                />
+            </div>
+        )
+    }
+
+    function getPropertySelectorChanged(): boolean {
+        return requiredOnly || changedOnly || propertyFilter?.trim().length > 0;
+    }
+
+    function getShowExpanded(): boolean {
+        return showAdvanced || getPropertySelectorChanged();
+    }
+
     return (
         <div key={selectedStep ? selectedStep.uuid : 'integration'}
              className='properties'>
             <Form autoComplete="off" onSubmit={event => event.preventDefault()}>
                 {selectedStep === undefined && <IntegrationHeader/>}
-                {selectedStep && getComponentHeader()}
+                {selectedStep && getPropertiesHeader()}
+                {selectedStep !== undefined && getPropertySelector()}
                 {getPropertyFields(propertiesMain)}
-                {selectedStep && !['MarshalDefinition', 'UnmarshalDefinition'].includes(selectedStep.dslName)
-                    && propertiesAdvanced.length > 0 &&
-                    <ExpandableSection
-                        toggleText={'EIP advanced properties'}
-                        onToggle={(_event, isExpanded) => setShowAdvanced(!showAdvanced)}
-                        isExpanded={showAdvanced}>
-                        <div className="parameters">
-                            {getPropertyFields(propertiesAdvanced)}
-                        </div>
-                    </ExpandableSection>}
                 {selectedStep && ['MarshalDefinition', 'UnmarshalDefinition'].includes(selectedStep.dslName) &&
                     <DataFormatField
                         integration={integration}
@@ -142,6 +189,15 @@ export function DslProperties(props: Props) {
                         onDataFormatChange={onDataFormatChange}
                         dark={dark}/>
                 }
+                {selectedStep && propertiesAdvanced.length > 0 &&
+                    <ExpandableSection
+                        toggleText={'EIP advanced properties'}
+                        onToggle={(_event, isExpanded) => setShowAdvanced(!showAdvanced)}
+                        isExpanded={getShowExpanded()}>
+                        <div className="parameters">
+                            {getPropertyFields(propertiesAdvanced)}
+                        </div>
+                    </ExpandableSection>}
             </Form>
         </div>
     )

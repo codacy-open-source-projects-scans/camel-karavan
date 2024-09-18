@@ -48,15 +48,13 @@ public final class CamelDefinitionGenerator extends AbstractGenerator {
 
         List<String> modelList = getClasses(definitions, "org.apache.camel");
         modelList.forEach(classFullName -> {
-            String model = generateModel(classFullName, definitions.getJsonObject(classFullName), definitions, getDslMetadata());
+            String model = generateModel(classFullName, definitions.getJsonObject(classFullName), definitions);
             camelModel.append(model).append(System.lineSeparator());
         });
         writeFileText(targetModel, camelModel.toString());
     }
 
-
-
-    private String generateModel(String classFullName, JsonObject obj, JsonObject definitions, Map<String, JsonObject> dslMetadata) {
+    private String generateModel(String classFullName, JsonObject obj, JsonObject definitions) {
 
         String className = classSimple(classFullName);
         String stepName = getStepNameForClass(className);
@@ -123,6 +121,9 @@ public final class CamelDefinitionGenerator extends AbstractGenerator {
             }
         } else if (attribute.containsKey("type") && attribute.getString("type").equals("object")) {
             return "any = {}";
+        } else if (attribute.containsKey("type") && attribute.getString("type").equals("number")) {
+            String defaultValue = generatedValue != null ? " = " + generatedValue : (required ? " = 0" : "");
+            return attribute.getString("type") + defaultValue;
         } else {
             String defaultValue = generatedValue != null ? " = " + generatedValue : (required ? " = ''" : "");
             return attribute.getString("type") + defaultValue;

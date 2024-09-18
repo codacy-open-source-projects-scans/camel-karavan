@@ -32,6 +32,6 @@ public class ComponentResources {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public String getJson() {
-        return codeService.getResourceFile("/components/components.json");
+        return codeService.getResourceFile("/metadata/components.json");
     }
 }

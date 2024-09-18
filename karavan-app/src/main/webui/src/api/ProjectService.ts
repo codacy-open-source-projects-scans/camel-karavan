@@ -66,7 +66,6 @@ export class ProjectService {
         KaravanApi.manageContainer(project.projectId, 'devmode', project.projectId, 'stop',  'never',res => {
             useDevModeStore.setState({status: 'none'})
             if (res.status === 200) {
-                useLogStore.setState({showLog: false, type: 'container'})
             } else {
                 EventBus.sendAlert('Error stopping DevMode container', res.statusText, 'warning')
             }
@@ -75,7 +74,7 @@ export class ProjectService {
 
     public static pauseDevModeContainer(project: Project) {
         useDevModeStore.setState({status: 'wip'})
-        KaravanApi.manageContainer(project.projectId, 'devmode', project.projectId, 'pause', 'never',res => {
+        KaravanApi.manageContainer(project.projectId, 'devmode', project.projectId, 'pause', 'never', res => {
             useDevModeStore.setState({status: 'none'})
             if (res.status === 200) {
                 useLogStore.setState({showLog: false, type: 'container'})
@@ -98,12 +97,14 @@ export class ProjectService {
         });
     }
 
-    public static pushProject(project: Project, commitMessage: string) {
+    public static pushProject(project: Project, commitMessage: string, selectedFileNames: string[]) {
         const params = {
             'projectId': project.projectId,
             'message': commitMessage,
-            'userId': KaravanApi.getUserId()
+            'userId': KaravanApi.getUserId(),
+            'fileNames': selectedFileNames.join(","),
         };
+        console.log(params);
         KaravanApi.push(params, res => {
             if (res.status === 200 || res.status === 201) {
                 // ProjectService.refreshProject(project.projectId);

@@ -56,6 +56,7 @@ import EditorIcon from "@patternfly/react-icons/dist/js/icons/code-icon";
 import {ExpressionModalEditor} from "../../../expression/ExpressionModalEditor";
 import {PropertyPlaceholderDropdown} from "./PropertyPlaceholderDropdown";
 import {INTERNAL_COMPONENTS} from "karavan-core/lib/api/ComponentApi";
+import {PropertyUtil} from "./PropertyUtil";
 
 const prefix = "parameters";
 const beanPrefix = "#bean:";
@@ -93,7 +94,7 @@ export function ComponentPropertyField(props: Props) {
                 if (props.value !== textValue) {
                     parametersChanged(property.name, textValue);
                 }
-            }, 1300);
+            }, 700);
             return () => {
                 clearInterval(interval)
             }
@@ -101,6 +102,7 @@ export function ComponentPropertyField(props: Props) {
     }, [checkChanges, textValue])
 
     function parametersChanged(parameter: string, value: string | number | boolean | any, pathParameter?: boolean, newRoute?: RouteToCreate) {
+        console.log("parametersChange", parameter, value);
         setCheckChanges(false);
         onParametersChange(parameter, value, pathParameter, newRoute);
         setSelectStatus(new Map<string, boolean>([[parameter, false]]))
@@ -413,12 +415,22 @@ export function ComponentPropertyField(props: Props) {
         )
     }
 
+
+    function getLabel(property: ComponentProperty, value: any) {
+        const bgColor = PropertyUtil.hasComponentPropertyValueChanged(property, value) ? 'yellow' : 'transparent';
+        return (
+            <div style={{display: "flex", flexDirection: 'row', alignItems: 'center', gap: '3px'}}>
+                <Text style={{backgroundColor: bgColor}}>{property.displayName}</Text>
+            </div>
+        )
+    }
+
     const property: ComponentProperty = props.property;
     const value = props.value;
     return (
         <FormGroup
             key={id}
-            label={property.displayName}
+            label={getLabel(property, value)}
             isRequired={property.required}
             labelIcon={
                 <Popover
@@ -444,7 +456,7 @@ export function ComponentPropertyField(props: Props) {
                 && getSpecialStringInput(property)}
             {['object'].includes(property.type) && !property.enum
                 && getSelectBean(property, value)}
-            {['string', 'object'].includes(property.type) && property.enum
+            {['string', 'object', 'integer'].includes(property.type) && property.enum
                 && getSelect(property, value)}
             {property.type === 'boolean'
                 && getSwitch(property)}

@@ -20,6 +20,16 @@
     color: var(--pf-v5-global--Color--100);
 }
 
+.dsl-modal .pf-v5-c-modal-box__header {
+    padding: 24px 0 24px 24px;
+    margin: 0;
+    border-bottom: 1px solid var(--pf-v5-global--BackgroundColor--light-300);
+}
+
+.dsl-modal .pf-v5-c-modal-box__body {
+    padding-top: 0;
+}
+
 .dsl-modal .dsl-card {
     cursor: pointer;
 }
@@ -50,11 +60,11 @@
 }
 
 .dsl-modal .search {
-    position: absolute;
-    top: 24px;
-    right: 72px;
-    display:flex;
-    justify-content:flex-end;
+    /*position: absolute;*/
+    /*top: 24px;*/
+    /*right: 72px;*/
+    /*display:flex;*/
+    /*justify-content:flex-end;*/
 }
 
 .dsl-modal .search .pf-v5-c-form__group-label {
@@ -117,6 +127,31 @@
 .dsl-modal .support-type,
 .dsl-modal .support-level {
     white-space: nowrap;
+}
+
+.dsl-modal .pf-m-unread {
+    font-weight: 200;
+}
+
+.dsl-modal .navigation-selector,
+.dsl-modal .dsl-card .pf-v5-c-card__header-main {
+    .label-eip {
+        --pf-v5-c-badge--BackgroundColor: var(--pf-v5-global--palette--orange-200);
+    }
+    .label-component {
+        --pf-v5-c-badge--BackgroundColor: var(--pf-v5-global--palette--blue-300);
+    }
+    .label-kamelet {
+        --pf-v5-c-badge--BackgroundColor: var(--pf-v5-global--palette--green-300);
+    }
+    .label-component-preview {
+        --pf-v5-c-badge--Color: var(--pf-v5-global--palette--blue-300);
+        --pf-v5-c-badge--BackgroundColor: var(--pf-v5-c-badge--m-read--BackgroundColor);
+    }
+    .label-kamelet-preview {
+        --pf-v5-c-badge--Color: var(--pf-v5-global--palette--green-300);
+        --pf-v5-c-badge--BackgroundColor: var(--pf-v5-c-badge--m-read--BackgroundColor);
+    }
 }
 
 .dsl-modal .labels {

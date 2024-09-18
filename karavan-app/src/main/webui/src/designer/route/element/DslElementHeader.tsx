@@ -147,7 +147,7 @@ export function DslElementHeader(props: Props) {
 
     function getHeaderIconClasses(): string {
         const classes: string[] = ['header-icon'];
-        if (['ToDefinition', 'FromDefinition'].includes(step.dslName)) {
+        if (['ToDefinition', 'FromDefinition', 'PollDefinition'].includes(step.dslName)) {
             classes.push('header-icon-square');
         } else if (step.dslName === 'ChoiceDefinition') {
             classes.push('header-icon-diamond');
@@ -252,7 +252,7 @@ export function DslElementHeader(props: Props) {
         return (
             <>
                 {getHeader()}
-                <Tooltip triggerRef={props.headerRef} position={"left"} content={<div style={{textAlign: 'left'}}>{tooltip}</div>}/>
+                <Tooltip triggerRef={props.headerRef} entryDelay={700} position={"left"} content={<div style={{textAlign: 'left'}}>{tooltip}</div>}/>
             </>
 
         )

@@ -36,7 +36,7 @@ import {
     CassandraIcon,
     ChatIcon,
     CloudIcon,
-    ClusterIcon,
+    ClusterIcon, CouchbaseIcon,
     DatabaseIcon,
     DebeziumIcon, DHIS2Icon, DirectIcon,
     DocumentIcon,
@@ -63,16 +63,16 @@ import {
     OpenstackIcon,
     RedisIcon,
     RefIcon,
-    RpcIcon,
+    RpcIcon, SalesforceIcon,
     SapIcon,
     SchedulingIcon,
     ScriptIcon,
-    SearchIcon, SmooksIcon,
+    SearchIcon, SlackIcon, SmooksIcon,
     SocialIcon,
     SpringIcon,
     TerminalIcon,
     TestingIcon,
-    TransformationIcon,
+    TransformationIcon, TwilioIcon, TwitterIcon,
     ValidationIcon, VertXIcon,
     WebserviceIcon,
     WorkflowIcon
@@ -84,7 +84,7 @@ import {
     Intercept,
     InterceptFrom,
     InterceptSendToEndpoint, LoadBalanceIcon,
-    OnCompletion,
+    OnCompletion, PollIcon,
     SagaIcon,
     SortIcon,
     SplitIcon,
@@ -211,9 +211,9 @@ export class CamelUi {
 
     static checkFilter = (dsl: DslMetaModel, filter: string | undefined = undefined): boolean => {
         if (filter !== undefined && filter !== "") {
-            return dsl.title.toLowerCase().includes(filter.toLowerCase())
+            return dsl.name.toLowerCase().includes(filter.toLowerCase())
                 || dsl.description.toLowerCase().includes(filter.toLowerCase())
-                || dsl.name.toLowerCase().includes(filter.toLowerCase())
+                || dsl.title.toLowerCase().includes(filter.toLowerCase())
                 || dsl.labels.toLowerCase().includes(filter.toLowerCase());
         } else {
             return true;
@@ -288,7 +288,6 @@ export class CamelUi {
                     description: c.component.description,
                     version: c.component.version,
                     supportLevel: c.component.supportLevel,
-                    supportType: c.component.supportType,
                     remote: c.component.remote,
                 }));
     }
@@ -333,6 +332,10 @@ export class CamelUi {
         return element.dslName === 'ToDefinition' && (element as any).uri === 'kamelet:sink';
     }
 
+    static isKamelet = (element?: CamelElement): boolean => {
+        return (element as any)?.uri?.startsWith("kamelet");
+    }
+
     static getInternalRouteUris = (integration: Integration, componentName: string, showComponentName: boolean = true): string[] => {
         const result: string[] = [];
         integration.spec.flows?.filter(f => f.dslName === 'RouteDefinition')
@@ -370,7 +373,7 @@ export class CamelUi {
         if (element.dslName === 'RouteDefinition') {
             const routeId = (element as RouteDefinition).id
             return routeId ? routeId : CamelUtil.capitalizeName((element as any).stepName);
-        } else if (['ToDefinition', 'ToDynamicDefinition', 'FromDefinition', 'KameletDefinition'].includes(element.dslName) && (element as any).uri) {
+        } else if (['ToDefinition', 'ToDynamicDefinition', 'PollDefinition', 'FromDefinition', 'KameletDefinition'].includes(element.dslName) && (element as any).uri) {
             const uri = (element as any).uri;
             const kameletTitle = uri && uri.startsWith("kamelet:") ? KameletApi.findKameletByUri(uri)?.title() : undefined;
             return kameletTitle ? kameletTitle : CamelUtil.capitalizeName(ComponentApi.getComponentTitleFromUri(uri) || '');
@@ -588,6 +591,16 @@ export class CamelUi {
             return DirectIcon();
         } else if (title.startsWith("Vert.x")) {
             return VertXIcon();
+        } else if (title.startsWith("Couchbase")) {
+            return CouchbaseIcon();
+        } else if (title.startsWith("Twilio")) {
+            return TwilioIcon();
+        } else if (title.startsWith("Twitter")) {
+            return TwitterIcon();
+        } else if (title.startsWith("Salesforce")) {
+            return SalesforceIcon();
+        } else if (title.startsWith("Slack")) {
+            return SlackIcon();
         } else if (title === "Exec") {
             return TerminalIcon();
         } else if (title === "Grape") {
@@ -715,6 +728,8 @@ export class CamelUi {
                 return <AggregateIcon/>;
             case 'ToDefinition':
                 return <ToIcon/>;
+            case 'PollDefinition':
+                return <PollIcon/>;
             case 'ChoiceDefinition' :
                 return <ChoiceIcon/>;
             case 'SplitDefinition' :
@@ -839,5 +854,4 @@ export class CamelUi {
             .forEach((f: any) => result.push(f));
         return result;
     }
-
 }

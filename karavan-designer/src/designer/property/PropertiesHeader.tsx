@@ -25,12 +25,13 @@ import {
     MenuToggle,
     DropdownList,
     DropdownItem, Flex, Popover, FlexItem, Badge, ClipboardCopy,
+    Switch,
 } from '@patternfly/react-core';
 import '../karavan.css';
 import './DslProperties.css';
 import "@patternfly/patternfly/patternfly.css";
 import {CamelUi} from "../utils/CamelUi";
-import {useDesignerStore} from "../DesignerStore";
+import {useDesignerStore, useSelectorStore} from "../DesignerStore";
 import {shallow} from "zustand/shallow";
 import {usePropertiesHook} from "./usePropertiesHook";
 import {CamelDisplayUtil} from "karavan-core/lib/api/CamelDisplayUtil";
@@ -38,6 +39,7 @@ import EllipsisVIcon from '@patternfly/react-icons/dist/esm/icons/ellipsis-v-ico
 import {ComponentApi} from "karavan-core/lib/api/ComponentApi";
 import HelpIcon from "@patternfly/react-icons/dist/js/icons/help-icon";
 import {CamelMetadataApi} from "karavan-core/lib/model/CamelMetadata";
+import {useRouteDesignerHook} from "../route/useRouteDesignerHook";
 
 interface Props {
     designerType: 'routes' | 'rest' | 'beans'
@@ -45,19 +47,16 @@ interface Props {
 
 export function PropertiesHeader(props: Props) {
 
-    const {
-        saveAsRoute,
-        convertStep,
-    } =
-        usePropertiesHook(props.designerType);
+    const {saveAsRoute, convertStep} = usePropertiesHook(props.designerType);
+    const {openSelectorToReplaceFrom} = useRouteDesignerHook();
 
-    const [selectedStep, dark]
-        = useDesignerStore((s) => [s.selectedStep, s.dark], shallow)
+    const [selectedStep, dark] = useDesignerStore((s) => [s.selectedStep, s.dark], shallow)
 
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
     const [isHeadersExpanded, setIsHeadersExpanded] = useState<boolean>(false);
     const [isExchangePropertiesExpanded, setIsExchangePropertiesExpanded] = useState<boolean>(false);
     const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
+    const [isStepTypeOpen, setIsStepTypeOpen] = React.useState(false);
 
     useEffect(() => {
         setMenuOpen(false)
@@ -89,8 +88,16 @@ export function PropertiesHeader(props: Props) {
                 )}
             >
                 <DropdownList>
+                    {isFrom &&
+                        <DropdownItem key="changeFrom" onClick={(ev) => {
+                            ev.preventDefault()
+                            openSelectorToReplaceFrom((selectedStep as any).id)
+                            setMenuOpen(false);
+                        }}>
+                            Change From...
+                        </DropdownItem>}
                     {hasSteps &&
-                        <DropdownItem key="saveRoute" onClick={(ev) => {
+                        <DropdownItem key="saveStepsRoute" onClick={(ev) => {
                             ev.preventDefault()
                             if (selectedStep) {
                                 saveAsRoute(selectedStep, true);
@@ -99,8 +106,8 @@ export function PropertiesHeader(props: Props) {
                         }}>
                             Save Steps to Route
                         </DropdownItem>}
-                    {hasSteps &&
-                        <DropdownItem key="saveRoute" onClick={(ev) => {
+                    {hasSteps && !isFrom &&
+                        <DropdownItem key="saveElementRoute" onClick={(ev) => {
                             ev.preventDefault()
                             if (selectedStep) {
                                 saveAsRoute(selectedStep, false);
@@ -223,12 +230,38 @@ export function PropertiesHeader(props: Props) {
     const descriptionLines: string [] = description ? description?.split("\n") : [""];
     const headers = ComponentApi.getComponentHeadersList(selectedStep)
     const exchangeProperties = selectedStep ? CamelMetadataApi.getExchangeProperties(selectedStep.dslName) : [];
-    const groups = selectedStep?.dslName === 'FromDefinition' ? ['consumer', 'common'] : ['producer', 'common']
+    const isFrom = selectedStep?.dslName === 'FromDefinition';
+    const isPoll = selectedStep?.dslName === 'PollDefinition';
+    const component = ComponentApi.findStepComponent(selectedStep);
+    const groups = (isFrom || isPoll) ? ['consumer', 'common'] : ['producer', 'common'];
+    const isKamelet = CamelUi.isKamelet(selectedStep);
+    const isStepComponent = !isFrom && selectedStep !== undefined && !isKamelet && ['ToDefinition', 'PollDefinition'].includes(selectedStep?.dslName);
+
+    function getComponentStepTypeSwitch() {
+        return (component?.component.producerOnly
+            ? <></>
+            : <Switch
+                id="step-type-switch"
+                label="Poll"
+                isChecked={isStepTypeOpen}
+                onChange={(event, checked) => {
+                    if (selectedStep) {
+                        convertStep(selectedStep, checked ? 'PollDefinition' : 'ToDefinition');
+                        setIsStepTypeOpen(checked);
+                    }
+                }}
+                ouiaId="step-type-switch"
+                isReversed
+            />
+        )
+    }
+
     return (
         <div className="headers">
             <div className="top">
                 <Title headingLevel="h1" size="md">{title}</Title>
                 {getHeaderMenu()}
+                {isStepComponent && getComponentStepTypeSwitch()}
             </div>
             <Text component={TextVariants.p}>{descriptionLines.at(0)}</Text>
             {descriptionLines.length > 1 && getDescriptionSection()}

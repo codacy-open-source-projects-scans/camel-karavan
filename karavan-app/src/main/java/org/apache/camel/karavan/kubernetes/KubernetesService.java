@@ -22,7 +22,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.utils.Serialization;
-import io.quarkus.runtime.configuration.ProfileManager;
+import io.quarkus.runtime.LaunchMode;
 import io.smallrye.mutiny.tuples.Tuple2;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
@@ -67,8 +67,8 @@ public class KubernetesService {
     @ConfigProperty(name = "karavan.devmode.service.account")
     String devModeServiceAccount;
 
-    @ConfigProperty(name = "karavan.devmode.create-pvc")
-    Boolean devmodePVC;
+    @ConfigProperty(name = "karavan.devmode.createm2", defaultValue = "false")
+    Optional<Boolean> devmodePVC;
 
     @ConfigProperty(name = "karavan.builder.service.account")
     String builderServiceAccount;
@@ -327,7 +327,7 @@ public class KubernetesService {
         Map<String, String> labels = getLabels(name, project, PodContainerStatus.ContainerType.devmode);
 
         try (KubernetesClient client = kubernetesClient()) {
-            if (devmodePVC) {
+            if (devmodePVC.orElse(false)) {
                 createPVC(name, labels);
             }
             Pod old = client.pods().inNamespace(getNamespace()).withName(name).get();
@@ -418,7 +418,7 @@ public class KubernetesService {
         podSpec.setContainers(List.of(container));
         podSpec.setRestartPolicy("Never");
         podSpec.setServiceAccount(devModeServiceAccount);
-        if (devmodePVC) {
+        if (devmodePVC.orElse(false)) {
             podSpec.getVolumes().add(new VolumeBuilder().withName(name).withNewPersistentVolumeClaim(name, false).build());
         }
 
@@ -534,7 +534,7 @@ public class KubernetesService {
     public String getNamespace() {
         if (namespace == null) {
             try (KubernetesClient client = kubernetesClient()) {
-                namespace = ProfileManager.getLaunchMode().isDevOrTest() ? "karavan" : client.getNamespace();
+                namespace = LaunchMode.current().getProfileKey().equalsIgnoreCase("dev") ? "karavan" : client.getNamespace();
             }
         }
         return namespace;

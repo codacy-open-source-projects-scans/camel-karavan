@@ -105,10 +105,11 @@ interface SelectorStateState {
     setSelectorTabIndex: (selectorTabIndex?: string | number) => void;
     selectedPosition?: number;
     setSelectedPosition: (selectedPosition?: number) => void;
-    selectedLabels: string [];
-    addSelectedLabel: (label: string) => void;
-    deleteSelectedLabel: (label: string) => void;
-    clearSelectedLabels: () => void;
+    selectedToggles: string [];
+    addSelectedToggle: (label: string) => void;
+    deleteSelectedToggle: (label: string) => void;
+    routeId?: string;
+    setRouteId: (routeId: string) => void;
 }
 
 export const useSelectorStore = createWithEqualityFn<SelectorStateState>((set) => ({
@@ -116,25 +117,16 @@ export const useSelectorStore = createWithEqualityFn<SelectorStateState>((set) =
     deleteMessage: '',
     parentId: '',
     showSteps: true,
-    selectedLabels: [],
-    addSelectedLabel: (label: string) => {
+    selectedToggles: ['eip', 'components', 'kamelets'],
+    addSelectedToggle: (toggle: string) => {
         set(state => ({
-            selectedLabels: [...state.selectedLabels, label]
+            selectedToggles: [...state.selectedToggles, toggle]
         }))
     },
-    deleteSelectedLabel: (label: string) => {
+    deleteSelectedToggle: (toggle: string) => {
         set(state => ({
-            selectedLabels: [...state.selectedLabels.filter(x => x !== label)]
+            selectedToggles: [...state.selectedToggles.filter(x => x !== toggle)]
         }))
-    },
-    clearSelectedLabels: () => {
-        set((state: SelectorStateState) => {
-            state.selectedLabels.length = 0;
-            return {selectedLabels : [...state.selectedLabels]};
-        })
-    },
-    setSelectedLabels: (selectedLabels: string []) => {
-        set({selectedLabels: selectedLabels})
     },
     setSelectorTabIndex: (selectorTabIndex?: string | number) => {
         set({selectorTabIndex: selectorTabIndex})
@@ -153,6 +145,9 @@ export const useSelectorStore = createWithEqualityFn<SelectorStateState>((set) =
     },
     setSelectedPosition: (selectedPosition?: number) => {
         set({selectedPosition: selectedPosition})
+    },
+    setRouteId: (routeId: string) => {
+        set({routeId: routeId})
     },
 }), shallow)
 

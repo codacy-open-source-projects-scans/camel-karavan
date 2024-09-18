@@ -32,7 +32,8 @@ import {
     Tooltip,
     Card,
     InputGroup,
-    capitalize, InputGroupItem, TextVariants, ToggleGroup, ToggleGroupItem, HelperTextItem, FormHelperText, HelperText
+    SelectOptionProps,
+    capitalize, InputGroupItem, TextVariants, ToggleGroup, ToggleGroupItem
 } from '@patternfly/react-core';
 import {
     Select,
@@ -77,6 +78,14 @@ import {BeanProperties} from "./BeanProperties";
 import {PropertyPlaceholderDropdown} from "./PropertyPlaceholderDropdown";
 import {VariablesDropdown} from "./VariablesDropdown";
 import {ROUTE, GLOBAL} from "karavan-core/lib/api/VariableUtil";
+import {SpiBeanApi} from "karavan-core/lib/api/SpiBeanApi";
+import {SelectField} from "./SelectField";
+import {PropertyUtil} from "./PropertyUtil";
+import {usePropertiesStore} from "../PropertyStore";
+import {Property} from "karavan-core/lib/model/KameletModels";
+
+const beanPrefix = "#bean:";
+const classPrefix = "#class:";
 
 interface Props {
     property: PropertyMeta,
@@ -93,7 +102,8 @@ interface Props {
 export function DslPropertyField(props: Props) {
 
     const [integration, setIntegration, addVariable, files] = useIntegrationStore((s) => [s.integration, s.setIntegration, s.addVariable, s.files], shallow)
-    const [dark, setSelectedStep] = useDesignerStore((s) => [s.dark, s.setSelectedStep], shallow)
+    const [dark, setSelectedStep, beans] = useDesignerStore((s) => [s.dark, s.setSelectedStep, s.beans], shallow)
+    const [propertyFilter, changedOnly, requiredOnly] = usePropertiesStore((s) => [s.propertyFilter, s.changedOnly, s.requiredOnly], shallow)
 
     const [isShowAdvanced, setIsShowAdvanced] = useState<string[]>([]);
     const [arrayValues, setArrayValues] = useState<Map<string, string>>(new Map<string, string>());
@@ -121,7 +131,7 @@ export function DslPropertyField(props: Props) {
                         propertyChanged(property.name, textValue);
                     }
                 }
-            }, 1300);
+            }, 700);
             return () => {
                 clearInterval(interval)
             }
@@ -199,6 +209,7 @@ export function DslPropertyField(props: Props) {
     }
 
     function getLabel(property: PropertyMeta, value: any, isKamelet: boolean) {
+        const bgColor = PropertyUtil.hasDslPropertyValueChanged(property, value) ? 'yellow' : 'transparent';
         if (!isMultiValueField(property) && property.isObject && !property.isArray && !["ExpressionDefinition"].includes(property.type)) {
             const tooltip = value ? "Delete " + property.name : "Add " + property.name;
             const className = value ? "change-button delete-button" : "change-button add-button";
@@ -208,7 +219,7 @@ export function DslPropertyField(props: Props) {
             const icon = value ? (<DeleteIcon/>) : (<AddIcon/>);
             return (
                 <div style={{display: "flex"}}>
-                    <Text>{title}</Text>
+                    <Text style={{backgroundColor: bgColor}}>{title}</Text>
                     <Tooltip position={"top"} content={<div>{tooltip}</div>}>
                         <button className={className} onClick={e => props.onPropertyChange?.(property.name, x)}
                                 aria-label="Add element">
@@ -221,7 +232,11 @@ export function DslPropertyField(props: Props) {
         if (isParameter(property)) {
             return isKamelet ? "Kamelet properties:" : "Component properties:";
         } else if (!["ExpressionDefinition"].includes(property.type)) {
-            return CamelUtil.capitalizeName(property.displayName);
+            return (
+                <div style={{display: "flex", flexDirection: 'row', alignItems: 'center', gap: '3px'}}>
+                    <Text style={{backgroundColor: bgColor}}>{CamelUtil.capitalizeName(property.displayName)}</Text>
+                </div>
+            )
         }
     }
 
@@ -470,42 +485,64 @@ export function DslPropertyField(props: Props) {
 
     function getJavaTypeGeneratedInput(property: PropertyMeta, value: any) {
         const {dslLanguage} = props;
-        return (<InputGroup>
-            <InputGroupItem isFill>
-                <TextInput
-                    ref={ref}
-                    className="text-field" isRequired
-                    type="text"
-                    id={property.name} name={property.name}
-                    value={value?.toString()}
-                    onChange={(_, value) => {
-                        propertyChanged(property.name, CamelUtil.capitalizeName(value?.replace(/\s/g, '')))
-                    }}
-                    readOnlyVariant={isUriReadOnly(property) ? "default" : undefined}/>
-            </InputGroupItem>
-            <InputGroupItem>
-                <Tooltip position="bottom-end" content={"Create Java Class"}>
-                    <Button isDisabled={value?.length === 0} variant="control"
-                            onClick={e => showCode(value, property.javaType)}>
-                        <PlusIcon/>
-                    </Button>
-                </Tooltip>
-            </InputGroupItem>
-            {showEditor && <InputGroupItem>
-                <ExpressionModalEditor name={property.name}
-                                       customCode={customCode}
-                                       showEditor={showEditor}
-                                       dark={dark}
-                                       dslLanguage={dslLanguage}
-                                       title="Java Class"
-                                       onClose={() => setShowEditor(false)}
-                                       onSave={(fieldId, value1) => {
-                                           propertyChanged(fieldId, value);
-                                           InfrastructureAPI.onSaveCustomCode?.(value, value1);
-                                           setShowEditor(false)
-                                       }}/>
-            </InputGroupItem>}
-        </InputGroup>)
+        const selectOptions: SelectOptionProps[] = [];
+        if (beans) {
+            selectOptions.push(...beans.map((bean) => {
+                return {value: beanPrefix + bean.name, children: bean.name}
+            }));
+            selectOptions.push(...SpiBeanApi.findByInterfaceTypeSimple(property.javaType).map((bean) => {
+                    return {
+                        value: classPrefix + bean.javaType, children: bean.name, description: bean.description
+                    }
+                })
+            );
+        }
+        return (
+            <SelectField
+                id={property.name}
+                name={property.name}
+                placeholder='Select bean'
+                selectOptions={selectOptions}
+                value={value?.toString()}
+                onChange={(name, value) => propertyChanged(property.name, value)}
+            />
+            // <InputGroup>
+            //     <InputGroupItem isFill>
+            //         <TextInput
+            //             ref={ref}
+            //             className="text-field" isRequired
+            //             type="text"
+            //             id={property.name} name={property.name}
+            //             value={value?.toString()}
+            //             onChange={(_, value) => {
+            //                 propertyChanged(property.name, CamelUtil.capitalizeName(value?.replace(/\s/g, '')))
+            //             }}
+            //             readOnlyVariant={isUriReadOnly(property) ? "default" : undefined}/>
+            //     </InputGroupItem>
+            //     <InputGroupItem>
+            //         <Tooltip position="bottom-end" content={"Create Java Class"}>
+            //             <Button isDisabled={value?.length === 0} variant="control"
+            //                     onClick={e => showCode(value, property.javaType)}>
+            //                 <PlusIcon/>
+            //             </Button>
+            //         </Tooltip>
+            //     </InputGroupItem>
+            //     {showEditor && <InputGroupItem>
+            //         <ExpressionModalEditor name={property.name}
+            //                                customCode={customCode}
+            //                                showEditor={showEditor}
+            //                                dark={dark}
+            //                                dslLanguage={dslLanguage}
+            //                                title="Java Class"
+            //                                onClose={() => setShowEditor(false)}
+            //                                onSave={(fieldId, value1) => {
+            //                                    propertyChanged(fieldId, value);
+            //                                    InfrastructureAPI.onSaveCustomCode?.(value, value1);
+            //                                    setShowEditor(false)
+            //                                }}/>
+            //     </InputGroupItem>}
+            // </InputGroup>
+        )
     }
 
     function getTextArea(property: PropertyMeta, value: any) {
@@ -630,8 +667,8 @@ export function DslPropertyField(props: Props) {
         const beans = CamelUi.getBeans(integration);
         if (beans) {
             selectOptions.push(<SelectOption key={0} value={"Select..."} isPlaceholder/>);
-            selectOptions.push(...beans.map((bean) => <SelectOption key={bean.name} value={bean.name}
-                                                                    description={bean.type}/>));
+            selectOptions.push(...beans.map((bean) =>
+                <SelectOption key={bean.name} value={bean.name} description={bean.type}/>));
         }
         return (
             <Select
@@ -867,32 +904,55 @@ export function DslPropertyField(props: Props) {
         )
     }
 
+    function getKameletPropertyValue(property: Property) {
+        const element = props.element;
+        return CamelDefinitionApiExt.getParametersValue(element, property.id)
+    }
+
+    function getFilteredKameletProperties(): Property[] {
+        const element = props.element;
+        const requiredParameters = CamelUtil.getKameletRequiredParameters(element);
+        let properties = CamelUtil.getKameletProperties(element)
+        const filter = propertyFilter.toLocaleLowerCase()
+        properties = properties.filter(p => p.title?.toLocaleLowerCase().includes(filter) || p.id?.toLocaleLowerCase().includes(filter));
+        if (requiredOnly) {
+            properties = properties.filter(p => requiredParameters.includes(p.id));
+        }
+        if (changedOnly) {
+            properties = properties.filter(p => PropertyUtil.hasKameletPropertyValueChanged(p, getKameletPropertyValue(p)));
+        }
+        return properties;
+    }
+
     function getKameletParameters() {
         const element = props.element;
         const requiredParameters = CamelUtil.getKameletRequiredParameters(element);
         return (
             <div className="parameters">
-                {CamelUtil.getKameletProperties(element).map(property =>
+                {getFilteredKameletProperties().map(property =>
                     <KameletPropertyField
                         key={property.id}
                         property={property}
-                        value={CamelDefinitionApiExt.getParametersValue(element, property.id)}
+                        value={getKameletPropertyValue(property)}
                         required={requiredParameters?.includes(property.id)}
                     />)}
             </div>
         )
     }
 
-    function getMainComponentParameters(properties: ComponentProperty[]) {
+    function getComponentPropertyValue(kp: ComponentProperty) {
         const element = props.element;
+        return CamelDefinitionApiExt.getParametersValue(element, kp.name, kp.kind === 'path');
+    }
+
+    function getMainComponentParameters(properties: ComponentProperty[]) {
         return (
             <div className="parameters">
                 {properties.map(kp => {
-                    const value = CamelDefinitionApiExt.getParametersValue(element, kp.name, kp.kind === 'path');
                     return (<ComponentPropertyField
                         key={kp.name}
                         property={kp}
-                        value={value}
+                        value={getComponentPropertyValue(kp)}
                         element={props.element}
                         onParameterChange={props.onParameterChange}
                     />)
@@ -902,8 +962,6 @@ export function DslPropertyField(props: Props) {
     }
 
     function getExpandableComponentProperties(properties: ComponentProperty[], label: string) {
-        const element = props.element;
-
         return (
             <ExpandableSection
                 toggleText={label}
@@ -917,13 +975,13 @@ export function DslPropertyField(props: Props) {
                         return prevState;
                     })
                 }}
-                isExpanded={isShowAdvanced.includes(label)}>
+                isExpanded={getShowExpanded(label)}>
                 <div className="parameters">
                     {properties.map(kp =>
                         <ComponentPropertyField
                             key={kp.name}
                             property={kp}
-                            value={CamelDefinitionApiExt.getParametersValue(element, kp.name, kp.kind === 'path')}
+                            value={getComponentPropertyValue(kp)}
                             onParameterChange={props.onParameterChange}
                         />
                     )}
@@ -973,9 +1031,30 @@ export function DslPropertyField(props: Props) {
         return ['string'].includes(property.type) && property.name !== 'expression' && property.isArray && !property.enumVals;
     }
 
+    function getFilteredComponentProperties(): ComponentProperty[] {
+        let componentProperties = CamelUtil.getComponentProperties(element);
+        const filter = propertyFilter.toLocaleLowerCase()
+        componentProperties = componentProperties.filter(p => p.name?.toLocaleLowerCase().includes(filter) || p.label.toLocaleLowerCase().includes(filter) || p.displayName.toLocaleLowerCase().includes(filter));
+        if (requiredOnly) {
+            componentProperties = componentProperties.filter(p => p.required);
+        }
+        if (changedOnly) {
+            componentProperties = componentProperties.filter(p => PropertyUtil.hasComponentPropertyValueChanged(p, getComponentPropertyValue(p)));
+        }
+        return componentProperties
+    }
+
+    function getPropertySelectorChanged(): boolean {
+        return requiredOnly || changedOnly || propertyFilter?.trim().length > 0;
+    }
+
+    function getShowExpanded(label: string): boolean {
+        return isShowAdvanced.includes(label) || getPropertySelectorChanged();
+    }
+
     function getComponentParameters(property: PropertyMeta) {
         const element = props.element;
-        const properties = CamelUtil.getComponentProperties(element);
+        const properties = getFilteredComponentProperties();
         const propertiesMain = properties.filter(p => !p.label.includes("advanced") && !p.label.includes("security") && !p.label.includes("scheduler"));
         const propertiesAdvanced = properties.filter(p => p.label.includes("advanced"));
         const propertiesScheduler = properties.filter(p => p.label.includes("scheduler"));
@@ -1013,9 +1092,11 @@ export function DslPropertyField(props: Props) {
     const isVariable = getIsVariable();
     const beanConstructors = element?.dslName === 'BeanFactoryDefinition' && property.name === 'constructors'
     const beanProperties = element?.dslName === 'BeanFactoryDefinition' && property.name === 'properties'
+    const isSpi = property.javaType.startsWith("org.apache.camel.spi") || property.javaType.startsWith("org.apache.camel.AggregationStrategy");
     return (
         <div>
             <FormGroup
+                className='dsl-property-form-group'
                 label={props.hideLabel ? undefined : getLabel(property, value, isKamelet)}
                 isRequired={property.required}
                 labelIcon={isParameter(property) ? undefined : getLabelIcon(property)}>
