@@ -25,6 +25,7 @@ import {
     BeanFactoryDefinition,
     RouteConfigurationDefinition,
     RouteDefinition,
+    RouteTemplateDefinition,
     ToDefinition
 } from "karavan-core/lib/model/CamelDefinition";
 import {CamelElement, Integration, IntegrationFile} from "karavan-core/lib/model/IntegrationDefinition";
@@ -402,7 +403,7 @@ export class CamelUi {
     static isShowExpressionTooltip = (element: CamelElement): boolean => {
         if (element.hasOwnProperty("expression")) {
             const exp = CamelDefinitionApiExt.getExpressionValue((element as any).expression);
-            return (exp !== undefined && (exp as any)?.expression?.trim().length > 0);
+            return (exp !== undefined && (exp as any)?.expression?.toString().trim().length > 0);
         }
         return false;
     }
@@ -728,7 +729,9 @@ export class CamelUi {
             case 'AggregateDefinition':
                 return <AggregateIcon/>;
             case 'ToDefinition':
-                return <ToIcon/>;
+                return ToIcon();
+            case 'ToDynamicDefinition':
+                return ToIcon('dynamic');
             case 'PollDefinition':
                 return <PollIcon/>;
             case 'ChoiceDefinition' :
@@ -818,7 +821,7 @@ export class CamelUi {
 
     static getFlowCounts = (i: Integration): Map<string, number> => {
         const result = new Map<string, number>();
-        result.set('routes', i.spec.flows?.filter((e: any) => e.dslName === 'RouteDefinition').length || 0);
+        result.set('routes', i.spec.flows?.filter((e: any) => ['RouteDefinition', 'RouteTemplateDefinition'].includes(e.dslName)).length || 0);
         result.set('rest', i.spec.flows?.filter((e: any) => e.dslName === 'RestDefinition').length || 0);
         result.set('routeConfiguration', i.spec.flows?.filter((e: any) => e.dslName === 'RouteConfigurationDefinition').length || 0);
         const beans = i.spec.flows?.filter((e: any) => e.dslName === 'Beans');
@@ -854,6 +857,13 @@ export class CamelUi {
     static getRouteConfigurations = (integration: Integration): RouteConfigurationDefinition[] | undefined => {
         const result: CamelElement[] = [];
         integration.spec.flows?.filter((e: any) => e.dslName === 'RouteConfigurationDefinition')
+            .forEach((f: any) => result.push(f));
+        return result;
+    }
+
+    static getRouteTemplates = (integration: Integration): RouteTemplateDefinition[] | undefined => {
+        const result: RouteTemplateDefinition[] = [];
+        integration.spec.flows?.filter((e: any) => e.dslName === 'RouteTemplateDefinition')
             .forEach((f: any) => result.push(f));
         return result;
     }

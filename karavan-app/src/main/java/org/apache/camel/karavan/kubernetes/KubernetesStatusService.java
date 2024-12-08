@@ -39,9 +39,10 @@ import org.eclipse.microprofile.health.Readiness;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
-import java.util.*;
-
-import static org.apache.camel.karavan.KaravanConstants.CAMEL_PREFIX;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Default
 @Readiness
@@ -91,21 +92,17 @@ public class KubernetesStatusService implements HealthCheck {
             stopInformers();
             LOGGER.info("Starting Kubernetes Informers");
 
-            Map<String, String> labels = getRuntimeLabels();
             KubernetesClient client = kubernetesClient();
 
-            SharedIndexInformer<Deployment> deploymentInformer = client.apps().deployments().inNamespace(getNamespace())
-                    .withLabels(labels).inform();
+            SharedIndexInformer<Deployment> deploymentInformer = client.apps().deployments().inNamespace(getNamespace()).inform();
             deploymentInformer.addEventHandlerWithResyncPeriod(new DeploymentEventHandler(this, eventBus), 30 * 1000L);
             informers.add(deploymentInformer);
 
-            SharedIndexInformer<Service> serviceInformer = client.services().inNamespace(getNamespace())
-                    .withLabels(labels).inform();
+            SharedIndexInformer<Service> serviceInformer = client.services().inNamespace(getNamespace()).inform();
             serviceInformer.addEventHandlerWithResyncPeriod(new ServiceEventHandler(this, eventBus), 30 * 1000L);
             informers.add(serviceInformer);
 
-            SharedIndexInformer<Pod> podRunInformer = client.pods().inNamespace(getNamespace())
-                    .withLabels(labels).inform();
+            SharedIndexInformer<Pod> podRunInformer = client.pods().inNamespace(getNamespace()).inform();
             podRunInformer.addEventHandlerWithResyncPeriod(new PodEventHandler( this, eventBus), 30 * 1000L);
             informers.add(podRunInformer);
 
@@ -145,14 +142,10 @@ public class KubernetesStatusService implements HealthCheck {
         return namespace;
     }
 
-    private Map<String, String> getRuntimeLabels() {
-        Map<String, String> labels = new HashMap<>();
-        labels.put(isOpenshift() ? "app.openshift.io/runtime" : "app.kubernetes.io/runtime", CAMEL_PREFIX);
-        return labels;
-    }
-
-    public boolean isOpenshift() {
-        return isOpenShift.isPresent() && isOpenShift.get();
+    public Deployment getDeployment(String name) {
+        try (KubernetesClient client = kubernetesClient()) {
+            return client.apps().deployments().inNamespace(getNamespace()).withName(name).get();
+        }
     }
 
     public String getCluster() {

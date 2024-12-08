@@ -27,7 +27,7 @@ import {
     InputGroupItem,
     TextInputGroup,
     TextVariants,
-    Text
+    Text, ValidatedOptions, FormHelperText, HelperText, HelperTextItem
 } from '@patternfly/react-core';
 import {
     Select,
@@ -45,8 +45,6 @@ import {ToDefinition} from "karavan-core/lib/model/CamelDefinition";
 import {InfrastructureSelector} from "./InfrastructureSelector";
 import {InfrastructureAPI} from "../../utils/InfrastructureAPI";
 import DockerIcon from "@patternfly/react-icons/dist/js/icons/docker-icon";
-import ShowIcon from "@patternfly/react-icons/dist/js/icons/eye-icon";
-import HideIcon from "@patternfly/react-icons/dist/js/icons/eye-slash-icon";
 import PlusIcon from "@patternfly/react-icons/dist/esm/icons/plus-icon";
 import {usePropertiesHook} from "../usePropertiesHook";
 import {useDesignerStore, useIntegrationStore} from "../../DesignerStore";
@@ -57,6 +55,8 @@ import {ExpressionModalEditor} from "../../../expression/ExpressionModalEditor";
 import {PropertyPlaceholderDropdown} from "./PropertyPlaceholderDropdown";
 import {INTERNAL_COMPONENTS} from "karavan-core/lib/api/ComponentApi";
 import {PropertyUtil} from "./PropertyUtil";
+import {isSensitiveFieldValid} from "../../utils/ValidatorUtils";
+import ExclamationCircleIcon from "@patternfly/react-icons/dist/esm/icons/exclamation-circle-icon";
 
 const prefix = "parameters";
 const beanPrefix = "#bean:";
@@ -78,7 +78,6 @@ export function ComponentPropertyField(props: Props) {
 
     const [selectStatus, setSelectStatus] = useState<Map<string, boolean>>(new Map<string, boolean>());
     const [showEditor, setShowEditor] = useState<boolean>(false);
-    const [showPassword, setShowPassword] = useState<boolean>(false);
     const [infrastructureSelector, setInfrastructureSelector] = useState<boolean>(false);
     const [infrastructureSelectorProperty, setInfrastructureSelectorProperty] = useState<string | undefined>(undefined);
     const [id, setId] = useState<string>(prefix + "-" + props.property.name);
@@ -102,7 +101,6 @@ export function ComponentPropertyField(props: Props) {
     }, [checkChanges, textValue])
 
     function parametersChanged(parameter: string, value: string | number | boolean | any, pathParameter?: boolean, newRoute?: RouteToCreate) {
-        console.log("parametersChange", parameter, value);
         setCheckChanges(false);
         onParametersChange(parameter, value, pathParameter, newRoute);
         setSelectStatus(new Map<string, boolean>([[parameter, false]]))
@@ -266,10 +264,11 @@ export function ComponentPropertyField(props: Props) {
                 </Tooltip>}
             {(!showEditor || property.secret) &&
                 <TextInput className="text-field" isRequired ref={ref}
-                           type={property.secret && !showPassword ? "password" : "text"}
+                           type="text"
+                           validated={validated}
                            autoComplete="off"
                            id={id} name={id}
-                           value={textValue !== undefined ? textValue : property.defaultValue}
+                           value={(textValue !== undefined ? textValue : property.defaultValue) || ''}
                            onBlur={_ => parametersChanged(property.name, textValue, property.kind === 'path')}
                            onChange={(_, v) => {
                                setTextValue(v);
@@ -299,13 +298,6 @@ export function ComponentPropertyField(props: Props) {
                                            setCheckChanges(false);
                                        }}/>
             </InputGroupItem>}
-            {property.secret &&
-                <Tooltip position="bottom-end" content={showPassword ? "Hide" : "Show"}>
-                    <Button variant="control" onClick={e => setShowPassword(!showPassword)}>
-                        {showPassword ? <ShowIcon/> : <HideIcon/>}
-                    </Button>
-                </Tooltip>
-            }
             <InputGroupItem>
                 <PropertyPlaceholderDropdown property={property} value={value} onComponentPropertyChange={(parameter, v) => {
                     onParametersChange(parameter, v);
@@ -322,10 +314,11 @@ export function ComponentPropertyField(props: Props) {
                 <InputGroupItem isFill>
                     <TextInput
                         className="text-field" isRequired
-                        type={(property.secret ? "password" : "text")}
+                        type="text"
+                        validated={validated}
                         autoComplete="off"
                         id={id} name={id}
-                        value={textValue !== undefined ? textValue : property.defaultValue}
+                        value={(textValue !== undefined ? textValue : property.defaultValue) || ''}
                         onBlur={_ => parametersChanged(property.name, textValue, property.kind === 'path')}
                         onChange={(_, v) => {
                             setTextValue(v);
@@ -395,8 +388,9 @@ export function ComponentPropertyField(props: Props) {
                         id={property.name + "-placeholder"}
                         name={property.name + "-placeholder"}
                         type="text"
+                        validated={validated}
                         aria-label="placeholder"
-                        value={!isValueBoolean ? textValue?.toString() : undefined}
+                        value={!isValueBoolean ? textValue?.toString() : ''}
                         onBlur={_ => onParametersChange(property.name, textValue)}
                         onChange={(_, v) => {
                             setTextValue(v);
@@ -425,8 +419,23 @@ export function ComponentPropertyField(props: Props) {
         )
     }
 
+    function getValidationHelper() {
+        return (
+            validated !== ValidatedOptions.default
+                ? <FormHelperText>
+                    <HelperText>
+                        <HelperTextItem icon={<ExclamationCircleIcon />} variant={validated}>
+                            {'Must be a placeholder {{ }} or secret {{secret:name/key}}'}
+                        </HelperTextItem>
+                    </HelperText>
+                </FormHelperText>
+                : <></>
+        )
+    }
+
     const property: ComponentProperty = props.property;
     const value = props.value;
+    const validated = (property.secret && !isSensitiveFieldValid(value)) ? ValidatedOptions.error : ValidatedOptions.default;
     return (
         <FormGroup
             key={id}
@@ -461,6 +470,7 @@ export function ComponentPropertyField(props: Props) {
             {property.type === 'boolean'
                 && getSwitch(property)}
             {getInfrastructureSelectorModal()}
+            {getValidationHelper()}
         </FormGroup>
     )
 }

@@ -1,15 +1,22 @@
+- beans:
+    - name: userService
+      type: "org.apache.camel.example.rest.UserService"
 - route:
-    id: route-8a40
-    nodePrefixId: route-78f
     from:
-      id: from-674b
-      uri: timer
+      uri: direct
       parameters:
-        timerName: name
+        name: getUser
       steps:
-        - doTry:
-            id: doTry-258c
-            doCatch:
-              - id: doCatch-32ac
-                exception:
-                  - java.lang.ArrayIndexOutOfBoundsException
+        - to:
+            uri: bean
+            parameters:
+              beanName: userService
+              method: "getUser(${header.id})"
+        - filter:
+            simple:
+              expression: "${body} == null"
+            steps:
+              - setHeader:
+                  name: Exchange.HTTP_RESPONSE_CODE
+                  constant:
+                    expression: 404

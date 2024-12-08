@@ -72,7 +72,7 @@ export function KameletDefinitionPropertyCard(props: Props) {
 
 
     function getPropertyField(field: string, label: string, isRequired: boolean, span: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12) {
-       return (<KameletInput elementKey={key + field} label={label} span={span} value={getPropertyValue(field)} setValue={(value: string) => setPropertyValue(field, value)} type='text' isRequired={isRequired}/>);
+        return (<KameletInput elementKey={key + field} label={label} span={span} value={getPropertyValue(field)} setValue={(value: string) => setPropertyValue(field, value)} type='text' isRequired={isRequired}/>);
     }
 
     function getPropertyTypeField(field: string, label: string, isRequired: boolean, span: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12) {
@@ -99,16 +99,12 @@ export function KameletDefinitionPropertyCard(props: Props) {
         const i = CamelUtil.cloneIntegration(integration);
         if (i.spec.definition && integration.spec.definition?.properties[key]) {
             const enums: string [] = i.spec.definition.properties[key].enum;
-            console.log(enums)
             if (enums && Array.isArray(enums)) {
-                console.log("isArray")
                 const from = enums.findIndex(e => source);
                 const to = enums.findIndex(e => dest);
                 if (from > -1 && to > -1) {
-                    console.log("exchange");
                     [enums[from], enums[to]] = [enums[to], enums[from]];
                     i.spec.definition.properties[key].enum = enums;
-                    console.log("i.spec.definition.properties[key].enum", i.spec.definition.properties[key].enum);
                     setIntegration(i, true);
                 }
             }
@@ -214,6 +210,7 @@ export function KameletDefinitionPropertyCard(props: Props) {
 
     function deleteProperty() {
         if (integration.spec.definition?.properties) {
+            integration.spec.definition.required = integration.spec.definition.required.filter(r => r !== key);
             delete integration.spec.definition.properties[key];
             setIntegration(integration, true);
         }

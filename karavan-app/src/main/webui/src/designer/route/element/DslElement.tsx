@@ -183,7 +183,7 @@ export function DslElement(props: Props) {
         } else {
             children = children.filter(child => child.className === 'FromDefinition')
         }
-        if (step.dslName === 'CatchDefinition') { // exception
+        if (['CatchDefinition', 'OnExceptionDefinition', 'OnCompletionDefinition', 'Resilience4jConfigurationDefinition'].includes(step.dslName)) { // exception
             children = children.filter(value => value.name !== 'onWhen')
         }
         return (
@@ -210,16 +210,19 @@ export function DslElement(props: Props) {
                             } else {
                                 nextStep = children.at(index + 1);
                             }
-                            return (<div key={step.uuid + child.className + index}>
-                                <DslElement
-                                    inSteps={child.name === 'steps'}
-                                    position={index}
-                                    step={element}
-                                    nextStep={nextStep}
-                                    prevStep={prevStep}
-                                    inStepsLength={array.length}
-                                    parent={step}/>
-                            </div>)
+                            return (
+                                // <div key={step.uuid + child.className + index}>
+                                    <DslElement
+                                        key={step.uuid + child.className + index}
+                                        inSteps={child.name === 'steps'}
+                                        position={index}
+                                        step={element}
+                                        nextStep={nextStep}
+                                        prevStep={prevStep}
+                                        inStepsLength={array.length}
+                                        parent={step}/>
+                                // </div>
+                            )
                         }
                     )}
                     {child.name === 'steps' && getAddStepButton()}
@@ -240,17 +243,12 @@ export function DslElement(props: Props) {
         const hideAddButton = step.dslName === 'StepDefinition' && !CamelDisplayUtil.isStepDefinitionExpanded(integration, step.uuid, selectedUuids.at(0));
         if (hideAddButton) return (<></>)
         else return (
-                <Tooltip position={"left"}
-                         content={<div>{"Add step to " + CamelDisplayUtil.getTitle(step)}</div>}
-                >
-                    <button type="button"
-                            aria-label="Add"
-                            onClick={e => onOpenSelector(e)}
-                            className={isAddStepButtonLeft() ? "add-button add-button-left" : "add-button add-button-bottom"}>
-                        <AddElementIcon/>
-                    </button>
-
-                </Tooltip>
+            <button type="button"
+                    aria-label="Add"
+                    onClick={e => onOpenSelector(e)}
+                    className={isAddStepButtonLeft() ? "add-button add-button-left" : "add-button add-button-bottom"}>
+                <AddElementIcon/>
+            </button>
         )
     }
 

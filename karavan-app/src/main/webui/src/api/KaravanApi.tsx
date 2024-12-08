@@ -208,30 +208,6 @@ export class KaravanApi {
         });
     }
 
-    static async getProjectDeploymentStatus(projectId: string, env: string, after: (status?: DeploymentStatus) => void) {
-        instance.get('/ui/status/deployment/' + projectId + "/" + env)
-            .then(res => {
-                if (res.status === 200) {
-                    after(res.data);
-                } else if (res.status === 204) {
-                    after(undefined);
-                }
-            }).catch(err => {
-            ErrorEventBus.sendApiError(err);
-        });
-    }
-
-    static async getProjectCamelStatus(projectId: string, env: string, after: (status: CamelStatus) => void) {
-        instance.get('/ui/status/camel/' + projectId + "/" + env)
-            .then(res => {
-                if (res.status === 200) {
-                    after(res.data);
-                }
-            }).catch(err => {
-            ErrorEventBus.sendApiError(err);
-        });
-    }
-
     static async getAllCamelContextStatuses(after: (statuses: CamelStatus[]) => void) {
         instance.get('/ui/status/camel/context')
             .then(res => {
@@ -390,6 +366,15 @@ export class KaravanApi {
         });
     }
 
+    static async copyProjectFile(fromProjectId: string, fromFilename: string, toProjectId: string, toFilename: string, overwrite: boolean, after: (res: AxiosResponse<any>) => void) {
+        instance.post('/ui/file/copy', {fromProjectId: fromProjectId, fromFilename: fromFilename, toProjectId: toProjectId, toFilename: toFilename, overwrite: overwrite})
+            .then(res => {
+                after(res);
+            }).catch(err => {
+            after(err);
+        });
+    }
+
     static async push(params: {}, after: (res: AxiosResponse<any>) => void) {
         instance.post('/ui/git', params)
             .then(res => {
@@ -479,7 +464,7 @@ export class KaravanApi {
     }
 
     static async startDevModeContainer(project: Project, verbose: boolean, after: (res: AxiosResponse<any>) => void) {
-        instance.post('/ui/devmode' + (verbose ? '/--verbose' : ''), project)
+        instance.post('/ui/devmode/' + verbose.toString(), project)
             .then(res => {
                 after(res);
             }).catch(err => {

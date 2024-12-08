@@ -449,9 +449,9 @@ export const CamelDataFormatMetadata: ElementMeta[] = [
         new PropertyMeta('contextPathIsClassName', 'Context Path Is Class Name', "This can be set to true to mark that the contextPath is referring to a classname and not a package name.", 'boolean', '', 'false', false, false, false, false, '', ''),
         new PropertyMeta('schema', 'Schema', "To validate against an existing schema. Your can use the prefix classpath:, file: or http: to specify how the resource should be resolved. You can separate multiple schema files by using the ',' character.", 'string', '', '', false, false, false, false, '', ''),
         new PropertyMeta('schemaSeverityLevel', 'Schema Severity Level', "Sets the schema severity level to use when validating against a schema. This level determines the minimum severity error that triggers JAXB to stop continue parsing. The default value of 0 (warning) means that any error (warning, error or fatal error) will trigger JAXB to stop. There are the following three levels: 0=warning, 1=error, 2=fatal error.", 'string', '0, 1, 2', '0', false, false, false, false, '', ''),
-        new PropertyMeta('prettyPrint', 'Pretty Print', "To enable pretty printing output nicely formatted. Is by default false.", 'boolean', '', 'false', false, false, false, false, '', ''),
-        new PropertyMeta('objectFactory', 'Object Factory', "Whether to allow using ObjectFactory classes to create the POJO classes during marshalling. This only applies to POJO classes that has not been annotated with JAXB and providing jaxb.index descriptor files.", 'boolean', '', 'false', false, false, false, false, 'advanced', ''),
-        new PropertyMeta('ignoreJAXBElement', 'Ignore JAXBElement', "Whether to ignore JAXBElement elements - only needed to be set to false in very special use-cases.", 'boolean', '', 'false', false, false, false, false, 'advanced', ''),
+        new PropertyMeta('prettyPrint', 'Pretty Print', "To enable pretty printing output nicely formatted. Is by default false.", 'boolean', '', 'true', false, false, false, false, '', ''),
+        new PropertyMeta('objectFactory', 'Object Factory', "Whether to allow using ObjectFactory classes to create the POJO classes during marshalling. This only applies to POJO classes that has not been annotated with JAXB and providing jaxb.index descriptor files.", 'boolean', '', 'true', false, false, false, false, 'advanced', ''),
+        new PropertyMeta('ignoreJAXBElement', 'Ignore JAXBElement', "Whether to ignore JAXBElement elements - only needed to be set to false in very special use-cases.", 'boolean', '', 'true', false, false, false, false, 'advanced', ''),
         new PropertyMeta('mustBeJAXBElement', 'Must Be JAXBElement', "Whether marhsalling must be java objects with JAXB annotations. And if not then it fails. This option can be set to false to relax that, such as when the data is already in XML format.", 'boolean', '', 'false', false, false, false, false, 'advanced', ''),
         new PropertyMeta('filterNonXmlChars', 'Filter Non Xml Chars', "To ignore non xml characheters and replace them with an empty space.", 'boolean', '', 'false', false, false, false, false, 'advanced', ''),
         new PropertyMeta('encoding', 'Encoding', "To overrule and use a specific encoding", 'string', '', '', false, false, false, false, '', ''),
@@ -697,7 +697,7 @@ export const CamelDataFormatMetadata: ElementMeta[] = [
         new PropertyMeta('id', 'Id', "The id of this node", 'string', '', '', false, false, false, false, '', ''),
         new PropertyMeta('library', 'Library', "Which yaml library to use. By default it is SnakeYAML", 'string', 'SnakeYAML', 'SnakeYAML', false, false, false, false, '', ''),
         new PropertyMeta('unmarshalType', 'Unmarshal Type', "Class name of the java type to use when unmarshalling", 'string', '', '', false, false, false, false, '', ''),
-        new PropertyMeta('constructor', 'Constructor', "BaseConstructor to construct incoming documents.", 'string', '', '', false, false, false, false, 'advanced', ''),
+        new PropertyMeta('_constructor', 'Constructor', "BaseConstructor to construct incoming documents.", 'string', '', '', false, false, false, false, 'advanced', ''),
         new PropertyMeta('representer', 'Representer', "Representer to emit outgoing objects.", 'string', '', '', false, false, false, false, 'advanced', ''),
         new PropertyMeta('dumperOptions', 'Dumper Options', "DumperOptions to configure outgoing objects.", 'string', '', '', false, false, false, false, 'advanced', ''),
         new PropertyMeta('resolver', 'Resolver', "Resolver to detect implicit type", 'string', '', '', false, false, false, false, 'advanced', ''),
@@ -2137,6 +2137,13 @@ export const CamelModelMetadata: ElementMeta[] = [
     ]),
     new ElementMeta('routeContextRef', 'RouteContextRefDefinition', 'Route Context Ref', "To refer to an XML file with routes defined using the xml-dsl", 'configuration', [
         new PropertyMeta('ref', 'Ref', "Reference to the routes in the xml dsl", 'string', '', '', true, false, false, false, '', ''),
+    ], [
+    ]),
+    new ElementMeta('templateParameter', 'RouteTemplateParameterDefinition', 'Template Parameter', "A route template parameter", 'configuration', [
+        new PropertyMeta('description', 'Description', "Description of the parameter", 'string', '', '', false, false, false, false, '', ''),
+        new PropertyMeta('name', 'Name', "The name of the parameter", 'string', '', '', true, false, false, false, '', ''),
+        new PropertyMeta('required', 'Required', "Whether the parameter is required or not. A parameter is required unless this option is set to false or a default value has been configured.", 'boolean', '', 'false', false, false, false, false, '', ''),
+        new PropertyMeta('defaultValue', 'Default Value', "Default value of the parameter. If a default value is provided then the parameter is implied not to be required.", 'string', '', '', false, false, false, false, '', ''),
     ], [
     ]),
     new ElementMeta('templatedRouteParameter', 'TemplatedRouteParameterDefinition', 'Templated Route Parameter', "An input parameter of a route template.", 'configuration', [

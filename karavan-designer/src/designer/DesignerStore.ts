@@ -110,6 +110,8 @@ interface SelectorStateState {
     deleteSelectedToggle: (label: string) => void;
     routeId?: string;
     setRouteId: (routeId: string) => void;
+    isRouteTemplate?: boolean;
+    setIsRouteTemplate: (isRouteTemplate: boolean) => void;
 }
 
 export const useSelectorStore = createWithEqualityFn<SelectorStateState>((set) => ({
@@ -117,6 +119,7 @@ export const useSelectorStore = createWithEqualityFn<SelectorStateState>((set) =
     deleteMessage: '',
     parentId: '',
     showSteps: true,
+    isRouteTemplate: false,
     selectedToggles: ['eip', 'components', 'kamelets'],
     addSelectedToggle: (toggle: string) => {
         set(state => ({
@@ -148,6 +151,9 @@ export const useSelectorStore = createWithEqualityFn<SelectorStateState>((set) =
     },
     setRouteId: (routeId: string) => {
         set({routeId: routeId})
+    },
+    setIsRouteTemplate: (isRouteTemplate: boolean) => {
+        set({isRouteTemplate: isRouteTemplate})
     },
 }), shallow)
 
@@ -207,6 +213,7 @@ type DesignerState = {
     left: number,
     moveElements: [string | undefined, string | undefined],
     propertyPlaceholders: string[],
+    parameterPlaceholders: [string, string][], // route template parameters
     beans: BeanFactoryDefinition[]
 }
 
@@ -226,6 +233,7 @@ const designerState: DesignerState = {
     left: 0,
     moveElements: [undefined, undefined],
     propertyPlaceholders: [],
+    parameterPlaceholders: [],
     beans: []
 };
 
@@ -243,6 +251,7 @@ type DesignerAction = {
     setNotification: (notificationBadge: boolean, notificationMessage: [string, string]) => void;
     setMoveElements: (moveElements: [string | undefined, string | undefined]) => void;
     setPropertyPlaceholders: (propertyPlaceholders: string[]) => void;
+    setParameterPlaceholders: (parameterPlaceholders: [string, string][]) => void;
     setBeans: (beans: BeanFactoryDefinition[]) => void;
 }
 
@@ -300,6 +309,13 @@ export const useDesignerStore = createWithEqualityFn<DesignerState & DesignerAct
         set((state: DesignerState) => {
             state.propertyPlaceholders.length = 0;
             state.propertyPlaceholders.push(...propertyPlaceholders);
+            return state;
+        })
+    },
+    setParameterPlaceholders: (parameterPlaceholders: [string, string][]) => {
+        set((state: DesignerState) => {
+            state.parameterPlaceholders.length = 0;
+            state.parameterPlaceholders.push(...parameterPlaceholders);
             return state;
         })
     },
