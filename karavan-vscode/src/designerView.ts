@@ -17,10 +17,10 @@
 import { Uri, window, commands, WebviewPanel, ExtensionContext, ViewColumn, WebviewPanelOnDidChangeViewStateEvent } from "vscode";
 import * as path from "path";
 import * as utils from "./utils";
-import { CamelDefinitionYaml } from "core/api/CamelDefinitionYaml";
-import { Integration, KameletTypes, Metadata, MetadataLabels } from "core/model/IntegrationDefinition";
+import { CamelDefinitionYaml } from "@/core/api/CamelDefinitionYaml";
+import { Integration, KameletTypes, Metadata, MetadataLabels } from "@/core/model/IntegrationDefinition";
 import { getWebviewContent } from "./webviewContent";
-import { BeanFactoryDefinition } from "core/model/CamelDefinition";
+import { BeanFactoryDefinition } from "@/core/model/CamelDefinition";
 
 const KARAVAN_LOADED = "karavan:loaded";
 const KARAVAN_PANELS: Map<string, WebviewPanel> = new Map<string, WebviewPanel>();
@@ -141,7 +141,7 @@ export class DesignerView {
                             this.sendData(panel, filename, relativePath, fullPath, message.reread === true, yaml, tab);
                             break;
                         case 'internalConsumerClick':
-                            this.internalConsumerClick(panel, fullPath, message.uri, message.name, message.routeId);
+                            this.internalConsumerClick(panel, fullPath, message.uri, message.name, message.routeId, message.fileName);
                             break;
                     }
                 },
@@ -252,9 +252,11 @@ export class DesignerView {
         }
     }
 
-    internalConsumerClick(panel: WebviewPanel, fullPath: string, uri?: string, name?: string, routeId?: string) {
-        console.log(uri, name, routeId)
-        if (uri && name) {
+    internalConsumerClick(panel: WebviewPanel, fullPath: string, uri?: string, name?: string, routeId?: string, fileName?: string) {
+        if (fileName) {
+            const filename = path.join(path.dirname(fullPath), fileName);
+            commands.executeCommand("karavan.open", { fsPath: filename })
+        } else if (uri && name) {
             utils.getFileWithIntegnalConsumer(fullPath, uri, name).then((filename) => {
                 if (filename !== undefined) {
                     commands.executeCommand("karavan.open", { fsPath: filename })

@@ -16,21 +16,22 @@
  */
 import * as React from "react";
 import {
-  Page, PageSection, Spinner, Text, TextVariants
+  Bullseye,
+  Content,
+  Page, PageSection, Spinner
 } from "@patternfly/react-core";
-import { KaravanDesigner } from "./designer/KaravanDesigner";
 import vscode from "./vscode";
-import { KameletApi } from "core/api/KameletApi";
-import { ComponentApi } from "core/api/ComponentApi";
+import { KameletApi } from "@/core/api/KameletApi";
+import { ComponentApi } from "@/core/api/ComponentApi";
 import { TemplateApi } from "./core/api/TemplateApi";
-import { EventBus } from "./designer/utils/EventBus";
-import { KnowledgebasePage } from "./knowledgebase/KnowledgebasePage";
-import { TopologyTab } from "./topology/TopologyTab";
-import {BeanFactoryDefinition} from "core/model/CamelDefinition";
-import { IntegrationFile } from "core/model/IntegrationDefinition";
+import { BeanFactoryDefinition } from "@/core/model/CamelDefinition";
+import { IntegrationFile } from "@/core/model/IntegrationDefinition";
+import { KaravanDesigner } from "./integration-designer/KaravanDesigner";
+import { EventBus } from "./integration-designer/utils/EventBus";
+import { TopologyTab } from "./integration-topology/TopologyTab";
+import { DocumentationPage } from "./documentation/DocumentationPage";
 
 interface Props {
-  dark: boolean
 }
 
 interface State {
@@ -48,7 +49,7 @@ interface State {
   active: boolean
   tab?: "routes" | "rest" | "beans"
   files: IntegrationFile[],
-  propertyPlaceholders: string[],
+  propertyPlaceholders: [string, string][],
   beans: BeanFactoryDefinition[]
 }
 
@@ -81,13 +82,6 @@ class App extends React.Component<Props, State> {
     window.addEventListener('message', this.onMessage, false);
     vscode.postMessage({ command: 'getData' });
     this.setState({ interval: setInterval(this.saveScheduledChanges, 2000) });
-    if (this.props.dark) {
-      const box = document.getElementsByTagName('html');
-      if (box != null && box.length > 0) {
-        box[0].classList.add('pf-v5-theme-dark');
-        // box.classList.remove('bg-yellow');
-      }
-    }
   }
 
   componentWillUnmount() {
@@ -100,7 +94,7 @@ class App extends React.Component<Props, State> {
     console.log("message.command", message.command);
     switch (message.command) {
       case 'kamelets':
-        KameletApi.saveKamelets(message.kamelets, true);
+        KameletApi.saveCustomKamelets(message.kamelets, true);
         this.setState((prevState: State) => {
           prevState.loadingMessages.push("Kamelets loaded");
           return { loadingMessages: prevState.loadingMessages }
@@ -174,8 +168,8 @@ class App extends React.Component<Props, State> {
         EventBus.sendCommand("downloadImage");
         break;
       case 'blockList':
-          const blockList = message.blockList;
-        const blockListMap = new Map(Object.keys(blockList).map(key => [key, blockList[key]])).forEach((list,key) => {
+        const blockList = message.blockList;
+        const blockListMap = new Map(Object.keys(blockList).map(key => [key, blockList[key]])).forEach((list, key) => {
           if (key === 'components-blocklist.txt') {
             ComponentApi.saveBlockedComponentNames(list.split(/\r?\n/));
           }
@@ -183,11 +177,11 @@ class App extends React.Component<Props, State> {
             KameletApi.saveBlockedKameletNames(list.split(/\r?\n/));
           }
         });
-          this.setState((prevState: State) => {
-            prevState.loadingMessages.push("block lists loaded");
-            return { loadingMessages: prevState.loadingMessages }
-          });
-          break;
+        this.setState((prevState: State) => {
+          prevState.loadingMessages.push("block lists loaded");
+          return { loadingMessages: prevState.loadingMessages }
+        });
+        break;
     }
   };
 
@@ -214,29 +208,29 @@ class App extends React.Component<Props, State> {
   saveIntegrationFiles(files: any) {
     const f = Object.keys(files).map(key => new IntegrationFile(key, files[key]));
     this.setState({ files: f });
-
   }
 
- onchangeBlockedList(type: string, name: string, checked: boolean) {
-  let fileContent = '';
-  if (type === "component") {
+  onchangeBlockedList(type: string, name: string, checked: boolean) {
+    let fileContent = '';
+    if (type === "component") {
       fileContent = ComponentApi.saveBlockedComponentName(name, checked).join('\n');
-  } else {
-      fileContent =KameletApi.saveBlockedKameletName(name, checked).join('\n');
-  }
-  vscode.postMessage({ command: 'saveBlockedList', key: type, value: fileContent });
+    } else {
+      fileContent = KameletApi.saveBlockedKameletName(name, checked).join('\n');
+    }
+    vscode.postMessage({ command: 'saveBlockedList', key: type, value: fileContent });
   }
 
   public render() {
     const { loadingMessages, filename, key, yaml, page, loaded, tab } = this.state;
-    const { dark } = this.props;
     return (
-      <Page className="karavan">
+      <div className="karavan">
         {!loaded &&
-          <PageSection variant={dark ? "dark" : "light"} className="loading-page">
-            <Spinner className="progress-stepper" diameter="80px" aria-label="Loading..." />
-            {/* {loadingMessages.map(message => <Text component={TextVariants.h5}>{message}</Text>)} */}
-            <Text component={TextVariants.h5}>Loading...</Text>
+          <PageSection className="loading-page">
+            <Bullseye>
+              <Spinner className="progress-stepper" diameter="80px" aria-label="Loading..." />
+              {/* {loadingMessages.map(message => <Text component={TextVariants.h5}>{message}</Text>)} */}
+              <Content component={'h5'}>Loading...</Content>
+            </Bullseye>
           </PageSection>
         }
         {loaded && page === "designer" &&
@@ -247,7 +241,6 @@ class App extends React.Component<Props, State> {
             yaml={yaml}
             onSave={(filename, yaml, propertyOnly) => this.save(filename, yaml, propertyOnly)}
             tab={tab}
-            dark={dark}
             onSaveCustomCode={(name, code) => this.saveJavCode(name, code)}
             onGetCustomCode={(name, javaType) => {
               let code = TemplateApi.getJavaCode(name);
@@ -257,30 +250,25 @@ class App extends React.Component<Props, State> {
             propertyPlaceholders={this.state.propertyPlaceholders}
             onSavePropertyPlaceholder={(key, value) => this.savePropertyPlaceholder(key, value)}
             beans={this.state.beans}
-            onInternalConsumerClick={(uri, name, routeId) => {
-              vscode.postMessage({ command: 'internalConsumerClick', uri: uri, name: name, routeId: routeId });
+            onInternalConsumerClick={(uri, name, routeId, fileName) => {
+              vscode.postMessage({ command: 'internalConsumerClick', uri: uri, name: name, routeId: routeId, fileName: fileName });
             }}
             files={this.state.files.map(f => new IntegrationFile(f.name, f.code))}
+            onCreateNewFile={() => { }}
+            onCreateNewRoute={() => { }}
           />
         }
-        {loaded && page === "knowledgebase" && 
-                <KnowledgebasePage 
-                          dark={dark} 
-                          showBlockCheckbox={true}
-                          changeBlockList={(type: string, name: string, checked: boolean) => this.onchangeBlockedList(type, name, checked)}/>
+        {loaded && page === "knowledgebase" &&
+          <DocumentationPage />
         }
         {loaded && page === "topology" &&
-          <TopologyTab
+          <TopologyTab openApiJson={undefined}
+            asyncApiJson={undefined}
             hideToolbar={true}
             files={this.state.files}
-            onClickAddRoute={() => vscode.postMessage({ command: 'createIntegration' })}
-            onClickAddREST={() => vscode.postMessage({ command: 'createIntegration' })}
-            onClickAddBean={() => vscode.postMessage({ command: 'createIntegration' })}
-            onClickAddKamelet={() => vscode.postMessage({ command: 'createIntegration' })}
-            onSetFile={(fileName) => vscode.postMessage({ command: 'openFile', fileName: fileName })}
           />
         }
-      </Page>
+      </div>
     )
   }
 }

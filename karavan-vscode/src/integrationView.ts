@@ -17,9 +17,9 @@
 import { workspace, TreeDataProvider, EventEmitter, Event, TreeItem, ProviderResult, Command, ThemeIcon, TreeItemCollapsibleState } from "vscode";
 import * as path from "path";
 import * as utils from "./utils";
-import { CamelDefinitionYaml } from "core/api/CamelDefinitionYaml";
+import { CamelDefinitionYaml } from "@/core/api/CamelDefinitionYaml";
 import { DesignerView } from "./designerView";
-import { Integration } from "core/model/IntegrationDefinition";
+import { Integration } from "@/core/model/IntegrationDefinition";
 
 export class IntegrationView implements TreeDataProvider<IntegrationItem> {
 
@@ -78,12 +78,12 @@ export class IntegrationItem extends TreeItem {
 	) {
 		super(title, integration ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.None);
 		this.tooltip = this.fsPath;
+		
+		this.iconPath = this.integration ? {
+			light: path.join(__filename, '..', '..', 'icons', 'light', this.integration?.type === 'crd' ? 'crd.svg' : 'karavan.svg'),
+			dark: path.join(__filename, '..', '..', 'icons', 'dark', this.integration?.type === 'crd' ? 'crd.svg' : 'karavan.svg')
+		} : ThemeIcon.File;
+
+		this.contextValue = this.integration ? 'integration' : "route";
 	}
-
-	iconPath = this.integration ? {
-		light: path.join(__filename, '..', '..', 'icons', 'light', this.integration?.type === 'crd' ? 'crd.svg' : 'karavan.svg'),
-		dark: path.join(__filename, '..', '..', 'icons', 'dark', this.integration?.type === 'crd' ? 'crd.svg' : 'karavan.svg')
-	} : ThemeIcon.File;
-
-	contextValue = this.integration ? 'integration' : "route";
 }
