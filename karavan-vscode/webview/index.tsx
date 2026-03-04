@@ -19,7 +19,7 @@ import {createRoot} from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import "@patternfly/patternfly/patternfly.css";
-import { ThemeProvider } from "./main/ThemeContext";
+import { ThemeProvider } from "@app/theme/ThemeContext";
 
 const container = document.getElementById('root');
 const root = createRoot(container!);
